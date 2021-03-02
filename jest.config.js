@@ -2,6 +2,8 @@
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
  * @format
+ * @noflow
+ * @emails oncall+internationalization
  */
 
 const fs = require('fs');
@@ -12,6 +14,7 @@ const runtimePaths = [
   '<rootDir>/runtime/nonfb',
   '<rootDir>/runtime/nonfb/mocks',
 ];
+const {PLUGINS} = require('./babelPlugins');
 
 const globalConfig = {
   setupFiles: ['fbjs-scripts/jest/environment.js'],
@@ -29,13 +32,30 @@ module.exports = {
   projects: [
     {
       displayName: 'babel-plugin-fbt',
-      roots: [fs.realpathSync(path.resolve('packages', 'babel-plugin-fbt'))],
+      roots: [
+        fs.realpathSync(path.resolve('packages', 'babel-plugin-fbt', 'dist')),
+      ],
+      snapshotResolver:
+        '<rootDir>/packages/babel-plugin-fbt/jest.snapshotResolver.js',
     },
     {
       displayName: 'babel-plugin-fbt-runtime',
       roots: [
         fs.realpathSync(path.resolve('packages', 'babel-plugin-fbt-runtime')),
       ],
+    },
+    {
+      displayName: 'fbt-runtime',
+      roots: [fs.realpathSync(path.resolve('packages', 'fbt', 'lib'))],
+      modulePaths: [fs.realpathSync(path.resolve('packages', 'fbt', 'lib'))],
+    },
+    {
+      displayName: 'gulp-rewrite-flowtyped-modules',
+      roots: [fs.realpathSync(path.resolve('packages', 'gulp-rewrite-flowtyped-modules'))],
+    },
+    {
+      displayName: 'gulp-strip-docblock-pragmas',
+      roots: [fs.realpathSync(path.resolve('packages', 'gulp-strip-docblock-pragmas'))],
     },
     {
       displayName: 'fb-tiger-hash',

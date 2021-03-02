@@ -2,9 +2,6 @@
 
 List of changes for each released npm package version.
 
-## Primo Mea-culpa
-We haven't had the best track record of code/feature changes before this date, but let's try to do this properly from now on... [2019/09/03]
-
 ## TOC
 
 - [fbt versions](#fbt-versions)
@@ -12,16 +9,22 @@ We haven't had the best track record of code/feature changes before this date, b
 - [babel-plugin-fbt-runtime versions](#babel-plugin-fbt-runtime-versions)
 - [fb-tiger-hash versions](#fb-tiger-hash-versions)
 - [fb-babel-plugin-utils versions](#fb-babel-plugin-utils-versions)
+- [gulp-rewrite-flowtyped-modules](#gulp-rewrite-flowtyped-modules)
 - [react-native-fbt versions](#react-native-fbt-versions)
 - [fbt-rn-android-native versions [Deprecated]](#fbt-rn-android-native-versions-deprecated)
 
 ### Top-level Github
+- [chore] Upgrade to Flow v0.141.0
+- [chore] Use GitHub Actions for Continuous Integration
+- [chore] Upgrade to Flow v0.137.0
+- [chore] Adding @noflow annotations
 - [chore] Upgrade to Flow v0.127.0
 - [fix] Relax required version patterns of npm dependencies
 - Sync `babelTypeShims.js` to GitHub. It was previously missing due to internal config issues.
 - Upgrade to Flow v0.123.0
 - [doc] Add Fbt Common Strings documentation
 - Upgrade to Flow v0.120.1
+- refactor: Remove String.prototype.* methods from FbtResult flow-types
 - refactor: Breakup `moduleMap` from babelPresets
 - Add `yarn clean-test` script to clean, rebuild and test this whole project
 - Run Flow checks and all Jest tests in Travis by default
@@ -44,8 +47,19 @@ We haven't had the best track record of code/feature changes before this date, b
   <summary>
     Unreleased changes that have landed in master. Click to see more.
   </summary>
-  - [feat] Add ES6 imports/exports support for shared enums. See [related doc.](https://facebook.github.io/fbt/docs/enums#es6-import-export-syntax)
+
+  - [fix] Don't strip punctuation that isn't redundant with token punctuation
+
 </details>
+
+- 0.16.1:
+  - [fix] Updated peer dependencies, and devEngines dependencies.
+  - [fix] Improved Flow typing of `intlList`
+- 0.16.0:
+  - [major] Merge two `GenderConst` entries that had the same value to avoid confusion. <br/>
+    I.e. `MIXED_SINGULAR` and `MIXED_PLURAL` will both be referred as `MIXED_UNKNOWN` and it'll keep the same value (`MIXED_UNKNOWN=5`).
+  - [feat] Add Babel `presets` as a CLI option for [`collectFBT.js`](https://github.com/facebook/fbt/blob/c6201e9b463685a942563adaa62569430d41aa27/packages/babel-plugin-fbt/bin/collectFBT.js)
+  - [feat] Add ES6 imports/exports support for shared enums. See [related doc.](https://facebook.github.io/fbt/docs/enums#es6-import-export-syntax)
 
 - 0.15.0:
   - [feat] Add ability to provide your own ViewerContext dynamically. See [related doc.](https://facebook.github.io/fbt/docs/getting_started_on_web#changing-of-translation-locale-on-the-fly)
@@ -105,7 +119,30 @@ We haven't had the best track record of code/feature changes before this date, b
     <summary>
       Unreleased changes that have landed in master. Click to see more.
     </summary>
+
+  - [fix] Add missing flow types for `yargs` npm module
   </details>
+
+- 0.17.0:
+  - [chore!] `collectFBT` renamed to `collectFbt` (BREAKING CHANGE: updates paths to binary)
+  - [minor!] Add ability to write Flow annotations in JS code directly.
+      Npm packages will contain both ES5 and Flow JS file versions.
+      Source files have been moved to a `src` folder and their ES5-transpiled versions
+      will be published inside the `dist` folder. (BREAKING CHANGE: updates paths to source files)
+  - [chore] Adding @noflow annotations
+  - [fix] Fix issue where the value of the `human` option of `fbt:pronoun` was processed incorrectly. Before, `human=true` used to behave as if `human=false`, and vice versa.
+      Also, when `fbt:pronoun` is used without an explicit `human=false` option, we'll now generate the `NOT_A_PERSON` gender-case.
+  - [fix] Fix incorrect object detection algorithm of `objMap()` in `FbtUtil.js`
+  - [chore] Remove dead code
+
+- 0.16.0:
+  - [major] Merge two `GenderConst` entries that had the same value to avoid confusion. <br/>
+    I.e. `MIXED_SINGULAR` and `MIXED_PLURAL` will both be referred as `MIXED_UNKNOWN` and it'll keep the same value (`MIXED_UNKNOWN=5`).
+  - [refactor] Remove dependency on `fbjs` and `fbjs-scripts` modules. Update to `jest-docblock@^26.0.0`.
+  - [feat] Added tests to ensure that `IntlVariations` gender and number constants are in sync with the client-side code equivalent
+
+- 0.15.1:
+  - [fix] `fbt:plural` branch pruning when `value` option present. (Introduced in v0.13.0)
 
 - 0.15.0:
   - [fix] Relax required version patterns of npm dependencies
@@ -177,6 +214,9 @@ We haven't had the best track record of code/feature changes before this date, b
 
 ### babel-plugin-fbt-runtime versions
 
+- 0.9.13:
+  - [fix] Updated peer dependencies
+
 - 0.9.12:
   - [fix] Relax required version patterns of npm dependencies
 
@@ -205,6 +245,15 @@ We haven't had the best track record of code/feature changes before this date, b
   - [250207c](https://github.com/facebook/fbt/commit/250207c) Update peer dependencies for babel-plugin-fbt.
 
 ### fb-tiger-hash versions
+
+  <details>
+    <summary>
+      Unreleased changes that have landed in master. Click to see more.
+    </summary>
+
+  - [refactor] Add flow types
+  </details>
+
 - 0.1.6:
   - Strip yarn files in .npmignore
 
@@ -225,7 +274,14 @@ We haven't had the best track record of code/feature changes before this date, b
     <summary>
      Unreleased changes that have landed in master. Click to see more.
     </summary>
+
+  - [chore] Adding @noflow annotations
+
   </details>
+
+- 0.11.0:
+  - [feat] Add ability to test against Jest code snapshots
+  - [fix] Add missing `json-diff` npm dependency
 
 - 0.10.1:
   - [fix] Relax required version patterns of npm dependencies
@@ -239,6 +295,11 @@ We haven't had the best track record of code/feature changes before this date, b
   - Add READMEs and improve repository link in package.json
 
 - 0.9.0:
+  - Initial commit
+
+### gulp-rewrite-flowtyped-modules
+
+- 0.0.9:
   - Initial commit
 
 ### react-native-fbt versions

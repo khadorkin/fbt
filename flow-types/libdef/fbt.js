@@ -3,6 +3,7 @@
  *
  * @format
  * @flow strict
+ * @emails oncall+internationalization
  */
 
 'use strict';
@@ -145,31 +146,6 @@ declare interface IFbtResultBase {
   _store?: {validated: boolean, ...};
 }
 
-declare interface IFbtStringish {
-  // Warning: The following methods are only applicable during the transition
-  // period for some existing code that uses string method on Fbt string.
-  //
-  // The fbt string should be considered as the final string to be displayed
-  // and therefore should not be manipulated.
-  // This relies on toString() which contains i18n logging logic to track impressions.
-  // I.e. If you use this, i18n will register the string as displayed!
-  //
-  // The following methods are expected not to be supported soon.
-
-  // Methods from String
-  indexOf: typeof String.prototype.indexOf;
-  match: typeof String.prototype.match;
-  normalize: typeof String.prototype.normalize;
-  replace: typeof String.prototype.replace;
-  search: typeof String.prototype.search;
-  slice: typeof String.prototype.slice;
-  split: typeof String.prototype.split;
-  substr: typeof String.prototype.substr;
-  substring: typeof String.prototype.substring;
-  toLowerCase: typeof String.prototype.toLowerCase;
-  toUpperCase: typeof String.prototype.toUpperCase;
-}
-
 // String result wrapper intended for ComponentScript.
 // Similar to FbtResultBase except that:
 // - it can only be assembled from strings, not React elements
@@ -189,21 +165,8 @@ declare class FbtPureStringResult implements IFbtResultBase {
   // unwrap(): string;
 }
 
-declare class $FbtResultBase extends FbtPureStringResult
-  implements IFbtStringish {
-  // implements IFbtStringish
-  indexOf: $PropertyType<IFbtStringish, 'indexOf'>;
-  match: $PropertyType<IFbtStringish, 'match'>;
-  normalize: $PropertyType<IFbtStringish, 'normalize'>;
-  replace: $PropertyType<IFbtStringish, 'replace'>;
-  search: $PropertyType<IFbtStringish, 'search'>;
-  slice: $PropertyType<IFbtStringish, 'slice'>;
-  split: $PropertyType<IFbtStringish, 'split'>;
-  substr: $PropertyType<IFbtStringish, 'substr'>;
-  substring: $PropertyType<IFbtStringish, 'substring'>;
-  toLowerCase: $PropertyType<IFbtStringish, 'toLowerCase'>;
-  toString: $PropertyType<IFbtStringish, 'toString'>;
-  toUpperCase: $PropertyType<IFbtStringish, 'toUpperCase'>;
+declare class $FbtResultBase extends FbtPureStringResult {
+  toString: typeof String.prototype.toString;
 }
 
 // Represents the input of an fbt.param
@@ -257,7 +220,8 @@ type $GenericFbtFunctionAPI<Input, Output, ParamInput, ParamOutput> = {
     options?: {
       many?: string,
       showCount?: 'ifMany' | 'no' | 'yes',
-      ...
+      name?: string, // token name
+      value?: $FbtContentItem, // optional value to replace token (rather than count)
     },
   ): ParamOutput,
   pronoun(

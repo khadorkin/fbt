@@ -6,6 +6,8 @@
  * produced by the fbt syntax transform.
  *
  * @format
+ * @noflow
+ * @emails oncall+internationalization
  */
 
 'use strict';

@@ -28,17 +28,17 @@
     "babel-preset-fbjs": "^3.1.2",
     "del": "^3.0.0",
     "fbjs-scripts": "^1.2.0",
-    "flow-bin": "^0.128.0",
+    "flow-bin": "^0.143.1",
     "gulp": "^4.0.0",
     "gulp-babel": "^8.0.0",
     "gulp-clean-css": "^4.0.0",
-    "gulp-concat-css": "^3.1.0",
+    "gulp-concat": "^2.6.1",
     "gulp-derequire": "^2.1.0",
     "gulp-flatten": "^0.4.0",
     "gulp-header": "^2.0.9",
     "gulp-if": "^2.0.2",
+    "gulp-once": "^2.1.1",
     "gulp-rename": "^1.4.0",
-    "gulp-rewrite-flowtyped-modules": "^0.0.3",
     "gulp-util": "^3.0.8",
     "invariant": "^2.2.4",
     "jest": "^24.9.0",
@@ -46,10 +46,8 @@
     "jest-docblock": "^22.2.0",
     "prettier": "^2.0.5",
     "react-dom": "^16.10.2",
-    "uglifyjs-webpack-plugin": "^2.1.1",
-    "webpack": "^4.0.0",
-    "webpack-stream": "^5.2.1",
-    "yargs": "^12.0.5"
+    "webpack": "^5.4.0",
+    "webpack-stream": "^5.2.1"
   },
   "dependencies": {
     "@babel/plugin-transform-runtime": "^7.2.0",
@@ -58,18 +56,24 @@
     "shelljs": "^0.8.4"
   },
   "scripts": {
-    "babel-plugin-fbt-runtime:test": "yarn jest packages/babel-plugin-fbt-runtime",
-    "babel-plugin-fbt:test": "yarn jest packages/babel-plugin-fbt",
-    "build-runtime": "gulp lib",
-    "clean-test": "yarn install && cd demo-app && yarn clean-build && cd .. && yarn test && yarn flow:check",
+    "babel-plugin-fbt-runtime:test": "jest packages/babel-plugin-fbt-runtime",
+    "babel-plugin-fbt:test": "jest packages/babel-plugin-fbt",
+    "fbt:test": "jest packages/fbt",
+    "build-runtime": "gulp build-runtime",
+    "clean-test": "yarn install && yarn workspace demo-app clean-build && yarn workspace demo-app test-build-scripts && yarn test && yarn flow:check",
     "clean": "gulp clean",
-    "demo-app:test": "yarn jest demo-app",
-    "fb-tiger-hash:test": "yarn jest fb-tiger-hash && cd packages/fb-tiger-hash && yarn test-types",
+    "demo-app:test": "yarn workspace demo-app test",
+    "fb-tiger-hash:test": "jest fb-tiger-hash && yarn workspace fb-tiger-hash test-types",
+    "gulp-rewrite-flowtyped-modules:test": "yarn workspace gulp-rewrite-flowtyped-modules test",
+    "gulp-strip-docblock-pragmas:test": "yarn workspace gulp-strip-docblock-pragmas test",
     "flow:check": "flow check --show-all-errors",
-    "flow:watch": "yarn run watch 'yarn flow stop && yarn flow check --show-all-errors 2>&1 | tee .flow-results' . --ignoreDotFiles",
-    "postinstall": "yarn build-runtime",
-    "test:watch": "yarn jest --watch",
-    "test": "yarn jest"
+    "flow:watch": "yarn watch 'yarn flow stop && yarn flow check --show-all-errors 2>&1 | tee .flow-results' . --ignoreDotFiles",
+    "postinstall": "yarn gulp --series clean build-runtime",
+    "//": "Needed because the yarn+workspace `install` process creates the bin scripts' symbolic links ONLY BEFORE running the install steps",
+    "create_dummy_bin_scripts_for_yarn_install": "mkdir -p packages/babel-plugin-fbt/dist/bin 2> /dev/null ; cp packages/babel-plugin-fbt/src/bin/*.bin.js packages/babel-plugin-fbt/dist/bin",
+    "preinstall": "yarn create_dummy_bin_scripts_for_yarn_install",
+    "test:watch": "jest --watch",
+    "test": "jest"
   },
   "resolutions": {
     "**/@babel/core": "^7.2.0",
@@ -78,11 +82,13 @@
   },
   "workspaces": [
     "demo-app",
-    "packages/babel-plugin-fbt",
     "packages/babel-plugin-fbt-runtime",
+    "packages/babel-plugin-fbt",
     "packages/fb-babel-plugin-utils",
     "packages/fb-tiger-hash",
-    "packages/fbt"
+    "packages/fbt",
+    "packages/gulp-rewrite-flowtyped-modules",
+    "packages/gulp-strip-docblock-pragmas"
   ],
   "engines": {
     "node": ">= 10.4.0"

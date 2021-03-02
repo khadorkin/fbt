@@ -5,7 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  *
  * @format
+ * @noflow
+ * @emails oncall+internationalization
  */
+/*eslint max-len: ["error", 100]*/
 
 'use strict';
 
@@ -54,6 +57,12 @@ function getDefaultTransformForPlugins(plugins) {
 }
 
 function parse(code) {
+  if ((typeof code !== 'string' && typeof code !== 'object') || code == null) {
+    // eslint-disable-next-line fb-www/no-new-error
+    throw new Error(
+      `Code must be a string or AST object but got: ${typeof code}`,
+    );
+  }
   return babelParser.parse(code, {
     sourceType: 'module',
     plugins: ['flow', 'jsx', 'nullishCoalescingOperator'],
@@ -196,11 +205,16 @@ ${jsonDiff.diffString(actualTree, expectedTree)}
           transform(testInfo.input, testInfo.options);
         } else {
           expect(() => {
-            this.assertSourceAstEqual(
-              testInfo.output,
-              transform(testInfo.input, testInfo.options),
-              options,
-            );
+            const transformOutput = transform(testInfo.input, testInfo.options);
+            if (options && options.matchSnapshot) {
+              expect(transformOutput).toMatchSnapshot();
+            } else {
+              this.assertSourceAstEqual(
+                testInfo.output,
+                transformOutput,
+                options,
+              );
+            }
           }).not.toThrow();
         }
       });
