@@ -2,7 +2,7 @@
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
  * @noflow
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  */
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -54,9 +54,10 @@ module.exports = {
               '@babel/plugin-proposal-optional-chaining',
               '@babel/plugin-transform-flow-strip-types',
               ['babel-plugin-fbt', {
+                fbtCommonPath: './common_strings.json',
                 // We can also provide the fbt enum manifest directly as a JS variable
                 // fbtEnumManifest: require('./.enum_manifest.json'),
-                fbtEnumPath: path.join(__dirname, '.enum_manifest.json')
+                fbtEnumPath: path.join(__dirname, '.enum_manifest.json'),
               }],
               'babel-plugin-fbt-runtime',
             ]

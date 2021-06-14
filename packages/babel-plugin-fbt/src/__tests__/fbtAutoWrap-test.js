@@ -1,12 +1,18 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  */
 
-const {payload, transform, withFbtRequireStatement} = require('../FbtTestUtil');
+const {
+  jsCodeFbtCallSerializer,
+  snapshotTransform,
+  withFbtRequireStatement,
+} = require('../FbtTestUtil');
 const {TestUtil} = require('fb-babel-plugin-utils');
+
+expect.addSnapshotSerializer(jsCodeFbtCallSerializer);
 
 const testData = {
   'should auto wrap a simple test with one level': {
@@ -15,32 +21,6 @@ const testData = {
         <link href="#">Your friends</link>
         liked your video
       </fbt>;`,
-    ),
-
-    output: withFbtRequireStatement(
-      `fbt._(
-        ${payload({
-          type: 'text',
-          jsfbt: '{=Your friends} liked your video',
-          desc: 'd',
-        })},
-        [
-          fbt._param(
-            '=Your friends',
-            React.createElement(
-              'link',
-              {href: '#'},
-              fbt._(
-                ${payload({
-                  type: 'text',
-                  jsfbt: 'Your friends',
-                  desc: 'In the phrase: "{=Your friends} liked your video"',
-                })},
-              ),
-            ),
-          ),
-        ],
-      );`,
     ),
   },
 
@@ -54,59 +34,18 @@ const testData = {
         your video
       </fbt>;`,
     ),
-
-    output: withFbtRequireStatement(
-      `fbt._(
-        ${payload({
-          type: 'text',
-          jsfbt: '{=Your friends liked} your video',
-          desc: 'd',
-        })},
-        [
-          fbt._param(
-            '=Your friends liked',
-            React.createElement(
-              Link,
-              {href: '#'},
-              fbt._(
-                ${payload({
-                  type: 'text',
-                  jsfbt: 'Your friends {=liked}',
-                  desc: 'In the phrase: "{=Your friends liked} your video"',
-                })},
-                [
-                  fbt._param(
-                    '=liked',
-                    React.createElement(
-                      'b',
-                      null,
-                      fbt._(
-                        ${payload({
-                          type: 'text',
-                          jsfbt: 'liked',
-                          desc:
-                            'In the phrase: "Your friends {=liked} your video"',
-                        })},
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );`,
-    ),
   },
 };
 
-describe('Test jsx auto-wrapping of implicit parameters', () =>
-  TestUtil.testSection(testData, transform));
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('Test jsx auto-wrapping of implicit parameters', () =>
+  TestUtil.testSection(testData, snapshotTransform, {matchSnapshot: true}));
 
-describe('Equality between auto-wrapped and manually wrapped params', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('Equality between auto-wrapped and manually wrapped params', () => {
   it('should wrap a single unwrapped <fbt> child and a string above', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=This is a nested">
@@ -128,7 +67,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <b>
@@ -144,7 +83,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap a single unwrapped <fbt> child and a string below', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div href="#">this is</div>
@@ -153,7 +92,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=this is">
@@ -172,7 +111,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap two unwrapped <fbt> children', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div>wrap once</div>
@@ -181,7 +120,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=wrap once">
@@ -206,7 +145,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap two unwrapped <fbt> children and 1 nested', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div>
@@ -219,7 +158,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=wrap once and also">
@@ -252,7 +191,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap an outer and inner child', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div href="#">
@@ -264,7 +203,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=this is a doubly">
@@ -290,7 +229,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap two children with one nested level', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div href="#">
@@ -303,7 +242,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=this is a doubly">
@@ -336,7 +275,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap a <fbt> child next to an explicit <fbt:param>', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="explicit param next to">
@@ -349,7 +288,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="explicit param next to">
@@ -372,7 +311,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap a <fbt> child nested in an explicit <fbt:param>', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="explicit fbt param">
@@ -387,7 +326,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="explicit fbt param">
@@ -415,7 +354,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
       'implicit <fbt:param> within it',
     () => {
       expect(
-        transform(
+        snapshotTransform(
           withFbtRequireStatement(
             `<fbt desc="d">
               outer string that should not appear in inner desc
@@ -431,7 +370,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
           ),
         ),
       ).toEqual(
-        transform(
+        snapshotTransform(
           withFbtRequireStatement(
             `<fbt desc="d">
               outer string that should not appear in inner desc
@@ -458,7 +397,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should work with multiple <fbt> calls in one file', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<div>
             <fbt desc="one">
@@ -473,7 +412,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<div>
             <fbt desc="one">
@@ -500,7 +439,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap two nested next to each other', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div href="#">
@@ -515,7 +454,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=one two">
@@ -554,7 +493,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap two nested next to each other with an extra level', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div href="#">
@@ -572,7 +511,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=one two test">
@@ -618,7 +557,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
 
   it('should wrap explicit params nested in implicit params with []', () => {
     expect(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <div>
@@ -653,7 +592,7 @@ describe('Equality between auto-wrapped and manually wrapped params', () => {
         ),
       ),
     ).toEqual(
-      transform(
+      snapshotTransform(
         withFbtRequireStatement(
           `<fbt desc="d">
             <fbt:param name="=this is a test [to make sure that explicit params under an implicit node][and ones that are next to each other] under an implicit tag are wrapped with [ ]">

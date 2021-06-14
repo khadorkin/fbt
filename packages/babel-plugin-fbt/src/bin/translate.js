@@ -1,12 +1,10 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  * @noflow
  */
-
-/*global process:false*/
 
 /* eslint max-len: ["warn", 120] */
 /**
@@ -79,11 +77,7 @@
 
 'use strict';
 
-const {objMap} = require('../FbtUtil');
-const {FbtSite} = require('../translate/FbtSite');
-const TranslationBuilder = require('../translate/TranslationBuilder');
-const TranslationConfig = require('../translate/TranslationConfig');
-const TranslationData = require('../translate/TranslationData');
+const {processFiles, processJSON} = require('./translateUtils');
 const fs = require('fs');
 const path = require('path');
 const yargs = require('yargs');
@@ -152,73 +146,6 @@ const argv = yargs
       'This is useful when you want to lazy load translations per locale.',
   ).argv;
 
-function parseJSONFile(filepath) {
-  try {
-    return JSON.parse(fs.readFileSync(filepath));
-  } catch (error) {
-    error.message += `\nFile path: "${filepath}"`;
-    throw error;
-  }
-}
-
-function processFiles(
-  stringFile /*: string */,
-  translationFiles /*: Array<string> */,
-) {
-  const phrases = parseJSONFile(stringFile).phrases;
-  const fbtSites = phrases.map(FbtSite.fromScan);
-  const translatedGroups = translationFiles.map(file => {
-    const group = parseJSONFile(file);
-    return processTranslations(fbtSites, group);
-  });
-  return processGroups(phrases, translatedGroups);
-}
-
-function processJSON(json) {
-  const fbtSites = json.phrases.map(FbtSite.fromScan);
-  return processGroups(
-    json.phrases,
-    json.translationGroups.map(group => processTranslations(fbtSites, group)),
-  );
-}
-
-function processTranslations(fbtSites, group) {
-  const config = TranslationConfig.fromFBLocale(group['fb-locale']);
-  const translations = objMap(group.translations, TranslationData.fromJSON);
-  const translatedPhrases = fbtSites.map(fbtsite =>
-    new TranslationBuilder(translations, config, fbtsite, false).build(),
-  );
-  return {
-    'fb-locale': group['fb-locale'],
-    translatedPhrases,
-  };
-}
-
-function processGroups(phrases, translatedGroups) {
-  let fbtHash = null;
-  if (yargs.argv[args.JENKINS]) {
-    fbtHash = require('../fbtHashKey');
-  } else if (yargs.argv[args.HASH]) {
-    fbtHash = require(yargs.argv[args.HASH]);
-  }
-
-  if (!fbtHash) {
-    return translatedGroups;
-  }
-
-  const localeToHashToFbt = {};
-  for (const group of translatedGroups) {
-    const hashToFbt = (localeToHashToFbt[group['fb-locale']] = {});
-    phrases.forEach((phrase, idx) => {
-      const translatedFbt = group.translatedPhrases[idx];
-      const payload = phrase.type === 'text' ? phrase.jsfbt : phrase.jsfbt.t;
-      const hash = fbtHash(payload, phrase.desc);
-      hashToFbt[hash] = translatedFbt;
-    });
-  }
-  return localeToHashToFbt;
-}
-
 function createJSON(obj) {
   return JSON.stringify(obj, ...(argv[args.PRETTY] ? [null, 2] : []));
 }
@@ -239,10 +166,45 @@ function writeOutput(output) {
   }
 }
 
+// TODO(T40113359) Remove this once this script is ready to be tested
+function catchKnownErrors__DEBUG_ONLY(callback) {
+  try {
+    callback();
+  } catch (error) {
+    if (
+      [
+        'Cannot convert undefined or null to object',
+        'JSFBT is not a string type',
+        'Unexpected end of JSON input',
+        "Cannot read property 'hasVariationMask' of undefined",
+        "Cannot read property 'title' of undefined",
+        // TODO:(T92301984) Remove this once we clean up stale translation data in fb_HX
+        'transData.tokens is not iterable',
+        // TODO: Remove this after we land D28687750 to support new jsfbt format.
+        'TEXT types sould have no table data and TABLE require it',
+      ].find(text => error.message.includes(text))
+    ) {
+      console.warn(
+        `WARN: %s: error(s) occurred but it's ok since ` +
+          `this script is not ready for testing yet.\n%s`,
+        require('path').basename(__filename),
+        error,
+      );
+    } else {
+      throw error;
+    }
+  }
+}
+
 if (argv[args.HELP]) {
   yargs.showHelp();
   process.exit(0);
 }
+
+const translationOptions = {
+  jenkins: yargs.argv[args.JENKINS],
+  hashModule: yargs.argv[args.HASH],
+};
 
 if (argv[args.STDIN]) {
   const stream = process.stdin;
@@ -253,10 +215,14 @@ if (argv[args.STDIN]) {
       source += chunk;
     })
     .on('end', function () {
-      const output = processJSON(JSON.parse(source));
-      writeOutput(output);
+      catchKnownErrors__DEBUG_ONLY(() => {
+        writeOutput(processJSON(JSON.parse(source), translationOptions));
+      });
     });
 } else {
-  const output = processFiles(argv[args.SRC], argv[args.TRANSLATIONS]);
-  writeOutput(output);
+  catchKnownErrors__DEBUG_ONLY(() => {
+    writeOutput(
+      processFiles(argv[args.SRC], argv[args.TRANSLATIONS], translationOptions),
+    );
+  });
 }

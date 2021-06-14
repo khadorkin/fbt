@@ -3,7 +3,7 @@
  *
  * @format
  * @flow strict
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  */
 /* eslint no-bitwise: 0 */
 
@@ -40,7 +40,7 @@ function toUtf8(str) {
 }
 
 // Hash computation for each string that matches the dump script in i18n's php.
-function jenkinsHash(str /*: string */) /*: number */ {
+function jenkinsHash(str: string): number {
   if (!str) {
     return 0;
   }
@@ -49,13 +49,13 @@ function jenkinsHash(str /*: string */) /*: number */ {
   var hash = 0;
   var len = utf8.length;
   for (var i = 0; i < len; i++) {
-    hash = hash + utf8[i];
+    hash += utf8[i];
     hash = (hash + (hash << 10)) >>> 0;
-    hash = hash ^ (hash >>> 6);
+    hash ^= hash >>> 6;
   }
 
   hash = (hash + (hash << 3)) >>> 0;
-  hash = hash ^ (hash >>> 11);
+  hash ^= hash >>> 11;
   hash = (hash + (hash << 15)) >>> 0;
 
   return hash;

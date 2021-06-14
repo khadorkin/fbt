@@ -1,7 +1,7 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  */
 
@@ -16,7 +16,8 @@ function runTest(data, extra) {
   TestUtil.assertSourceAstEqual(expected, actual);
 }
 
-describe('fbt preserveWhitespace argument', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('fbt preserveWhitespace argument', () => {
   // TODO: t17559607 Fix space normalization
   // it('should preserve whitespace in text when requested', () => {
   //   runTest({

@@ -3,26 +3,20 @@
  *
  * @format
  * @noflow
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  */
 const babel = require('@babel/core');
 const createCacheKeyFunction = require('fbjs-scripts/jest/createCacheKeyFunction');
-const path = require('path');
 
 const cacheKeyPackages = [
   'babel-preset-fbjs',
   'babel-plugin-fbt',
   'babel-plugin-fbt-runtime',
 ].map(name =>
-  path.join(
-    path.dirname(
-      // Find the actual module root from the package.json file,
-      // otherwise, the result may be incorrect if a custom "main" path was set.
-      // See https://stackoverflow.com/a/49455609/104598
-      require.resolve(path.join(name, 'package.json')),
-    ),
-    'package.json',
-  ),
+  // Find the actual module root from the package.json file,
+  // otherwise, the result may be incorrect if a custom "main" path was set.
+  // See https://stackoverflow.com/a/49455609/104598
+  require.resolve(`${name}/package.json`),
 );
 
 // This is basically fbjs-scripts/jest/preprocessor, but with the
@@ -32,7 +26,7 @@ function createTransformer(opts /*: Object */ = {}) {
     process(src /*: string */, filename /*: string */) {
       const options = {
         presets: [
-          ['@babel/react', {throwIfNamespace: false}],
+          [require('@babel/preset-react'), {throwIfNamespace: false}],
           require('babel-preset-fbjs'),
         ],
         plugins: opts.plugins || [],

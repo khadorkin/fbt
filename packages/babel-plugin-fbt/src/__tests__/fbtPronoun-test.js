@@ -1,7 +1,7 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  */
 
@@ -23,7 +23,8 @@ function runTestForReactNative(data, extra) {
   runTest(data, extra);
 }
 
-describe('fbt pronoun support', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('fbt pronoun support', () => {
   it('"capitalize" option accepts boolean literal true', () => {
     runTest({
       input:
@@ -132,7 +133,8 @@ describe('fbt pronoun support', () => {
   });
 });
 
-describe('fbt pronoun support (react native)', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('fbt pronoun support (react native)', () => {
   it('"capitalize" option accepts boolean literal true', () => {
     runTestForReactNative({
       input:

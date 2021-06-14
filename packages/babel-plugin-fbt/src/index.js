@@ -1,85 +1,141 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @format
+ * @emails oncall+i18n_fbt_js
  * @flow
  */
+
 /*eslint max-len: ["error", 100]*/
 
 'use strict';
 
-/*::
+import type {
+  FbtTableKey,
+  PatternHash,
+  PatternString,
+} from '../../../runtime/shared/FbtTable';
+import type {MetaPhrase} from './babel-processors/FbtFunctionCallProcessor';
+import type {AnyFbtNode, PlainFbtNode} from './fbt-nodes/FbtNode';
+import type {FbtCommonMap} from './FbtCommon';
+import type {FbtCallSiteOptions} from './FbtConstants';
+import type {EnumManifest, EnumModule} from './FbtEnumRegistrar';
+import typeof {FbtVariationType} from './translate/IntlVariations';
+import type {BabelTransformPlugin} from '@babel/core';
 import typeof BabelTypes from '@babel/types';
-import type {
-  BabelTransformPlugin,
-} from '@babel/core';
-import type {
-  FbtCallSiteOptions,
-} from './FbtConstants';
-import type {
-  ExtractTableTextItems,
-  FbtFunctionCallPhrase,
-} from './babel-processors/FbtFunctionCallProcessor';
-import type {FbtRuntimeInput} from '../../../runtime/shared/FbtHooks';
-import type {PatternString} from '../../../runtime/shared/FbtTable';
 
-export type ExtraBabelNodeProps = {
-  implicitDesc?: string,
-  implicitFbt?: boolean,
-  parentIndex?: number,
-};
-export type FbtBabelNodeCallExpression = BabelNodeCallExpression & ExtraBabelNodeProps;
-export type FbtBabelNodeJSXElement = BabelNodeJSXElement & ExtraBabelNodeProps;
-export type FbtBabelNodeShape = $Shape<ExtraBabelNodeProps>;
+export type ExtraOptions = {[optionName: string]: boolean};
+type FbtEnumLoader = (enumFilePath: string) => EnumModule;
 export type PluginOptions = {|
-  auxiliaryTexts: boolean,
-  collectFbt: boolean,
-  extraOptions: {[optionName: string]: mixed},
-  fbtBase64: boolean,
+  collectFbt?: boolean,
+  extraOptions: ExtraOptions,
+  fbtBase64?: boolean,
+  fbtCommon?: FbtCommonMap,
+  fbtCommonPath?: ?string,
   // Path to a JS module that must export a function that is responsible for
   // loading an fbt enum (by file path) and return its object.
-  // I.e. fbt enum loading function signature:
-  // (enumFilePath) => typeof $PropertyType<PluginOptions, 'fbtEnumManifest'>
+  // I.e. fbt enum loading function signature: `FbtEnumLoader`
   fbtEnumLoader?: ?string,
   // Function that would return an fbt manifest object
-  fbtEnumManifest?: ?{[enumModuleName: string]: {[enumKey: string]: string}},
+  fbtEnumManifest?: ?EnumManifest,
   // Fbt enum file path
   fbtEnumPath?: ?string,
   // Object map of file paths keyed by fbt enum module names
   fbtEnumToPath?: ?{[enumName: string]: string},
-  fbtSentinel?: string,
-  filename: string,
-  reactNativeMode: boolean,
+  fbtSentinel?: ?string,
+  filename?: ?string,
+  // If true, generate the `outerTokenName` property on the JSFbt tree leaves.
+  generateOuterTokenName?: boolean,
+  reactNativeMode?: boolean,
 |};
-type TableJSFBT = {
-  t: FbtRuntimeInput,
-  m: {}
-};
+
+type TokenAlias = string;
+
+export type TokenAliases = {|
+  [clearTokenName: string]: TokenAlias,
+|};
+
+/**
+ * This is the main payload collected from the fbt callsite.
+ *
+ * - For simple fbt calls without interpolation (fbt.param) or multiplexing (fbt.plural,
+ *   fbt.enum, viewer context variation, etc), this is a simple TableJSFBTTreeLeaf object.
+ * - Otherwise this is a tree structure whose keys correspond to the associated string variation
+ *   parameters passed to the various fbt constructs (param, plural, pronoun) of this callsite;
+ *   and tree leaves are TableJSFBTTreeLeaf objects.
+ */
+export type TableJSFBTTree =
+  | TableJSFBTTreeLeaf
+  | {|
+      [key: FbtTableKey]: TableJSFBTTree,
+    |};
+
+export type TableJSFBTTreeLeaf = {|
+  desc: string,
+  hash?: PatternHash,
+  text: PatternString,
+  tokenAliases?: TokenAliases,
+
+  // The token name (at the outer string level) referring to this inner string
+  //
+  // E.g. For the fbt string `<fbt>Hello <i>World</i></fbt>`,
+  // the outer string is "Hello {=World}", and the inner string is: "World".
+  // So the outer token name of the inner string will be "=World"
+  outerTokenName?: string,
+|};
+
+// Describes the usage of one level of the JSFBT table tree
+export type JSFBTMetaEntry = $ReadOnly<
+  | {|
+      type: $PropertyType<FbtVariationType, 'NUMBER'>,
+      singular?: true, // TODO(T29504932) deprecate this
+      token?: string, // token name
+    |}
+  | {|
+      type: $PropertyType<FbtVariationType, 'GENDER'>,
+      token: string, // token name
+    |}
+  | {|
+      type: $PropertyType<FbtVariationType, 'PRONOUN'>,
+    |}
+  | {|
+      // for enums
+      range: $ReadOnlyArray<string>,
+    |},
+>;
+
+export type TableJSFBT = $ReadOnly<{|
+  t: $ReadOnly<TableJSFBTTree>,
+  m: $ReadOnlyArray<?JSFBTMetaEntry>,
+|}>;
+
 export type ObjectWithJSFBT = {|
-  type: 'text',
-  jsfbt: PatternString,
-|} | {|
-  type: 'table',
   jsfbt: TableJSFBT,
 |};
+
 export type Phrase = {|
   ...FbtCallSiteOptions,
   col_beg: number,
   col_end: number,
-  desc: string,
-  filepath: string,
+  filepath: ?string,
   line_beg: number,
   line_end: number,
   project: string,
-  texts?: ExtractTableTextItems,
   ...ObjectWithJSFBT,
 |};
 type ChildToParentMap = {[childIndex: number]: number};
-*/
+
+export type BabelPluginFbt = {
+  ({types: BabelTypes, ...}): BabelTransformPlugin,
+  getExtractedStrings: () => Array<Phrase>,
+  getChildToParentRelationships: () => ChildToParentMap,
+  fbtHashKey: typeof fbtHashKey,
+};
 
 const FbtCommonFunctionCallProcessor = require('./babel-processors/FbtCommonFunctionCallProcessor');
 const FbtFunctionCallProcessor = require('./babel-processors/FbtFunctionCallProcessor');
 const JSXFbtProcessor = require('./babel-processors/JSXFbtProcessor');
+const {toPlainFbtNodeTree} = require('./fbt-nodes/FbtNodeUtil');
 const FbtCommon = require('./FbtCommon');
 const {
   JSModuleName: {FBT},
@@ -88,10 +144,8 @@ const {
 const FbtEnumRegistrar = require('./FbtEnumRegistrar');
 const fbtHashKey = require('./fbtHashKey');
 const FbtShiftEnums = require('./FbtShiftEnums');
-const {
-  checkOption,
-  objMap,
-} = require('./FbtUtil');
+const FbtUtil = require('./FbtUtil');
+const {checkOption, objMap} = FbtUtil;
 const {
   RequireCheck: {isRequireAlias},
 } = require('fb-babel-plugin-utils');
@@ -100,33 +154,31 @@ const {parse: parseDocblock} = require('jest-docblock');
 /**
  * Default options passed from a docblock.
  */
-let defaultOptions /*: FbtCallSiteOptions */;
+let defaultOptions: FbtCallSiteOptions;
 
 /**
  * An array containing all collected phrases.
  */
-let phrases/*: Array<Phrase>*/;
+let allMetaPhrases: Array<{|...MetaPhrase, phrase: Phrase|}>;
 
 /**
  * An array containing the child to parent relationships for implicit nodes.
  */
-let childToParent/*: ChildToParentMap*/;
+let childToParent: ChildToParentMap;
 
-function BabelPluginFbt(babel /*: {
-  types: BabelTypes,
-}*/) /*: BabelTransformPlugin<ExtraBabelNodeProps>*/ {
+function FbtTransform(babel: {types: BabelTypes}): BabelTransformPlugin {
   const t = babel.types;
 
   return {
     pre() {
-      // TODO(T56277508) Type this.opts to match `PluginOptions`
-      this.opts.fbtBase64 = this.opts.fbtBase64;
+      const pluginOptions: PluginOptions = this.opts;
+      pluginOptions.fbtBase64 = pluginOptions.fbtBase64;
 
-      FbtCommon.init(this.opts);
-      FbtEnumRegistrar.setEnumManifest(getEnumManifest(this.opts));
+      FbtCommon.init(pluginOptions);
+      FbtEnumRegistrar.setEnumManifest(getEnumManifest(pluginOptions));
       initExtraOptions(this);
       initDefaultOptions(this);
-      phrases = [];
+      allMetaPhrases = [];
       childToParent = {};
     },
 
@@ -144,7 +196,7 @@ function BabelPluginFbt(babel /*: {
         if (!root) {
           return;
         }
-        path.replaceWith(root.convertToFbtFunctionCallNode(phrases.length));
+        root.convertToFbtFunctionCallNode(allMetaPhrases.length);
       },
 
       /**
@@ -169,10 +221,9 @@ function BabelPluginFbt(babel /*: {
        * );
        */
       CallExpression(path) {
-        const {node} = path;
         const visitor = this;
         const fileSource = visitor.file.code;
-        const pluginOptions = visitor.opts;
+        const pluginOptions: PluginOptions = visitor.opts;
 
         let root = FbtCommonFunctionCallProcessor.create({
           babelTypes: t,
@@ -201,34 +252,53 @@ function BabelPluginFbt(babel /*: {
           return;
         }
 
-        const {
-          callNode,
-          phrase,
-          texts,
-        } = root.convertToFbtRuntimeCall();
+        // TODO(T40113359): remove this once we're done implementing proper conversion to fbt nodes
+        // root.convertToFbtNode();
 
+        const {callNode, metaPhrases} = root.convertToFbtRuntimeCall();
         path.replaceWith(callNode);
 
-        if (pluginOptions.collectFbt && !phrase.doNotExtract) {
-          if (pluginOptions.auxiliaryTexts) {
-            phrase.texts = texts;
-          }
+        if (pluginOptions.collectFbt) {
+          const initialPhraseCount = allMetaPhrases.length;
+          metaPhrases.forEach((metaPhrase, index) => {
+            if (metaPhrase.phrase.doNotExtract) {
+              return;
+            }
+            addMetaPhrase(metaPhrase, pluginOptions);
 
-          addPhrase(node, phrase, visitor);
-
-          if (node.parentIndex !== undefined) {
-            addEnclosingString(phrases.length - 1, node.parentIndex);
-          }
+            if (metaPhrase.parentIndex != null) {
+              addEnclosingString(
+                index + initialPhraseCount,
+                metaPhrase.parentIndex + initialPhraseCount,
+              );
+            }
+          });
         }
       }, // CallExpression
     }, // visitor
   }; // babel plugin return
 }
 
-BabelPluginFbt.getExtractedStrings = () /*: Array<Phrase>*/ => phrases;
+FbtTransform.getExtractedStrings = (): Array<Phrase> =>
+  allMetaPhrases.map(metaPhrase => metaPhrase.phrase);
 
-BabelPluginFbt.getChildToParentRelationships = () /*: ChildToParentMap*/ =>
+FbtTransform.getChildToParentRelationships = (): ChildToParentMap =>
   childToParent || {};
+
+FbtTransform.getFbtElementNodes = (): Array<PlainFbtNode> => {
+  const FbtElementNode = require('./fbt-nodes/FbtElementNode');
+  const phraseToIndexMap = new Map<AnyFbtNode, number>(
+    allMetaPhrases.map((metaPhrase, index) => [metaPhrase.fbtNode, index]),
+  );
+
+  return allMetaPhrases
+    .map(({fbtNode}) =>
+      fbtNode instanceof FbtElementNode
+        ? toPlainFbtNodeTree(fbtNode, phraseToIndexMap)
+        : null,
+    )
+    .filter(Boolean);
+};
 
 function initExtraOptions(state) {
   Object.assign(ValidFbtOptions, state.opts.extraOptions || {});
@@ -248,18 +318,22 @@ function initDefaultOptions(state) {
   }
 }
 
-function addPhrase(node, phrase, state) {
-  phrases.push({
-    filepath: state.opts.filename,
-    // $FlowFixMe `start` property might be null
-    line_beg: node.loc.start.line,
-    // $FlowFixMe `start` property might be null
-    col_beg: node.loc.start.column,
-    // $FlowFixMe `end` property might be null
-    line_end: node.loc.end.line,
-    // $FlowFixMe `end` property might be null
-    col_end: node.loc.end.column,
-    ...(phrase /*: FbtFunctionCallPhrase */),
+function addMetaPhrase(metaPhrase, pluginOptions) {
+  const {fbtNode} = metaPhrase;
+  allMetaPhrases.push({
+    ...metaPhrase,
+    phrase: {
+      filepath: pluginOptions.filename,
+      // $FlowFixMe `start` property might be null
+      line_beg: fbtNode.node.loc.start.line,
+      // $FlowFixMe `start` property might be null
+      col_beg: fbtNode.node.loc.start.column,
+      // $FlowFixMe `end` property might be null
+      line_end: fbtNode.node.loc.end.line,
+      // $FlowFixMe `end` property might be null
+      col_end: fbtNode.node.loc.end.column,
+      ...metaPhrase.phrase,
+    },
   });
 }
 
@@ -267,11 +341,7 @@ function addEnclosingString(childIdx, parentIdx) {
   childToParent[childIdx] = parentIdx;
 }
 
-function getUnknownCommonStringErrorMessage(moduleName, text) {
-  return `Unknown string "${text}" for <${moduleName} common={true}>`;
-}
-
-function getEnumManifest(opts) {
+function getEnumManifest(opts): ?EnumManifest {
   const {fbtEnumManifest, fbtEnumPath, fbtEnumToPath} = opts;
   if (fbtEnumManifest != null) {
     return fbtEnumManifest;
@@ -279,16 +349,17 @@ function getEnumManifest(opts) {
     // $FlowExpectedError node.js require() needs to be dynamic
     return require(fbtEnumPath);
   } else if (fbtEnumToPath != null) {
-    const loadEnum = opts.fbtEnumLoader
+    const loadEnum: FbtEnumLoader = opts.fbtEnumLoader
       ? // $FlowExpectedError node.js require() needs to be dynamic
         require(opts.fbtEnumLoader)
       : require;
-    return objMap(opts.fbtEnumToPath, loadEnum);
+    return objMap(fbtEnumToPath, loadEnum);
   }
   return null;
 }
 
-BabelPluginFbt.fbtHashKey = fbtHashKey;
-BabelPluginFbt.FbtShiftEnums = FbtShiftEnums;
+FbtTransform.fbtHashKey = fbtHashKey;
+FbtTransform.FbtShiftEnums = FbtShiftEnums;
+FbtTransform.FbtUtil = FbtUtil;
 
-module.exports = BabelPluginFbt;
+module.exports = FbtTransform;

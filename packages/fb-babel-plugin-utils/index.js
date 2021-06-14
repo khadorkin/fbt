@@ -6,11 +6,10 @@
  *
  * @format
  * @noflow
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  */
 
 module.exports = {
   RequireCheck: require('./RequireCheck'),
-  SyntaxPlugins: require('./SyntaxPlugins'),
   TestUtil: require('./TestUtil'),
 };

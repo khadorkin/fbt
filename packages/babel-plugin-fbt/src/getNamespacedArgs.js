@@ -3,15 +3,16 @@
  *
  * Fbt JSX namespaced elements handler.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
+ * Disabling typing since this file will be deprecated by the fbt-autoparam project
+ * @noflow
  */
 'use strict';
 
 /* eslint fb-www/comma-dangle: "off" */
 // See explanation in ./index.js
 
-const FbtAutoWrap = require('./FbtAutoWrap');
 const {
   PluralOptions,
   PluralRequiredAttributes,
@@ -34,15 +35,6 @@ const {jsxExpressionContainer, stringLiteral} = t;
 
 const getNamespacedArgs = function (moduleName) {
   return {
-    /**
-     * Node that is a child of a <fbt> node that should be handled as
-     * <fbt:param>
-     */
-    implicitParamMarker(node) {
-      const newNode = FbtAutoWrap.wrapImplicitFBTParam(moduleName, t, node);
-      return [stringLiteral('=' + newNode.paramName), newNode];
-    },
-
     /**
      * <fbt:param> or <FbtParam>
      */

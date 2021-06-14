@@ -1,16 +1,15 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @format
+ * @emails oncall+i18n_fbt_js
  * @flow
  */
+
 /* eslint max-len: ["warn", 100] */
 
-/*::
 import type {PackagerPhrase} from './FbtCollector';
-*/
 
-const {FbtType} = require('../FbtConstants');
 const fbtHashKey = require('../fbtHashKey');
 const jenkinsHash = require('../fbtJenkinsHash');
 
@@ -19,14 +18,12 @@ const jenkinsHash = require('../fbtJenkinsHash');
  * entire payload for identification
  */
 class PhrasePackager {
-  pack/*:: */(phrases /*: Array<PackagerPhrase> */) /*: Array<PackagerPhrase> */ {
+  pack(phrases: Array<PackagerPhrase>): Array<PackagerPhrase> {
     return phrases.map(phrase => {
-      const payload =
-        phrase.type === FbtType.TABLE ? phrase.jsfbt.t : phrase.jsfbt;
       return {
-        hash_key: fbtHashKey(payload, phrase.desc),
-        hash_code: jenkinsHash(payload, phrase.desc),
-        ...(phrase /*: PackagerPhrase */),
+        hash_key: fbtHashKey(phrase.jsfbt.t),
+        hash_code: jenkinsHash(phrase.jsfbt.t),
+        ...(phrase: PackagerPhrase),
       };
     });
   }

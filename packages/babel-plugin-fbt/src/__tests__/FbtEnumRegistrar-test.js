@@ -1,7 +1,10 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
- * @emails oncall+internationalization
+ *
+ * @format
+ * @emails oncall+i18n_fbt_js
  */
+
 const FbtEnumRegistrar = require('../FbtEnumRegistrar');
 
 describe('Test FbtEnumRegistrar', () => {

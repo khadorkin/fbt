@@ -3,28 +3,45 @@
  *
  * @flow
  * @format
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  */
-
-/*global process:false*/
 
 /* eslint max-len: ["warn", 120] */
 
 'use strict';
 
-import type {HashFunction} from './TextPackager';
+import type {PlainFbtNode} from '../fbt-nodes/FbtNode';
+import type {TableJSFBT} from '../index';
+import type {ChildParentMappings, PackagerPhrase} from './FbtCollector';
+export type CollectFbtOutput = {|
+  phrases: Array<{|
+    ...PackagerPhrase,
+    jsfbt?: TableJSFBT,
+  |}>,
+  childParentMappings: ChildParentMappings,
+  fbtElementNodes?: ?Array<PlainFbtNode>,
+|};
 
-const FbtCollector = require('./FbtCollector');
-const PhrasePackager = require('./PhrasePackager');
-const TextPackager = require('./TextPackager');
+export type CollectFbtOutputPhrase = $ElementType<
+  $PropertyType<CollectFbtOutput, 'phrases'>,
+  number,
+>;
+
+const {packagerTypes} = require('./collectFbtConstants');
+const {
+  buildCollectFbtOutput,
+  getFbtCollector,
+  getPackagers,
+} = require('./collectFbtUtils');
 const fs = require('fs');
-const nullthrows = require('nullthrows');
 const path = require('path');
 const yargs = require('yargs');
 
 const args = {
-  AUXILIARY_TEXTS: 'auxiliary-texts',
   COMMON_STRINGS: 'fbt-common-path',
+  CUSTOM_COLLECTOR: 'custom-collector',
+  GEN_FBT_NODES: 'gen-fbt-nodes',
+  GEN_OUTER_TOKEN_NAME: 'gen-outer-token-name',
   HASH: 'hash-module',
   HELP: 'h',
   MANIFEST: 'manifest',
@@ -35,13 +52,7 @@ const args = {
   PRETTY: 'pretty',
   REACT_NATIVE_MODE: 'react-native-mode',
   TERSE: 'terse',
-};
-
-const packagerTypes = {
-  TEXT: 'text',
-  PHRASE: 'phrase',
-  BOTH: 'both',
-  NONE: 'none',
+  TRANSFORM: 'transform',
 };
 
 const argv = yargs
@@ -83,12 +94,6 @@ const argv = yargs
   )
   .describe(args.HELP, 'Display usage message')
   .alias(args.HELP, 'help')
-  .boolean(args.AUXILIARY_TEXTS)
-  .describe(
-    args.AUXILIARY_TEXTS,
-    'Include auxiliary intermediary data-structure `texts` that includes the ' +
-      'list of constructs passed to the fbt instance.',
-  )
   .boolean(args.MANIFEST)
   .default(args.MANIFEST, false)
   .describe(
@@ -106,6 +111,30 @@ const argv = yargs
   .boolean(args.PRETTY)
   .default(args.PRETTY, false)
   .describe(args.PRETTY, 'Pretty-print the JSON output')
+  .boolean(args.GEN_OUTER_TOKEN_NAME)
+  .default(args.GEN_OUTER_TOKEN_NAME, false)
+  .describe(
+    args.GEN_OUTER_TOKEN_NAME,
+    'Generate the outer token name of an inner string in the JSON output. ' +
+      'E.g. For the fbt string `<fbt>Hello <i>World</i></fbt>`, ' +
+      'the outer string is "Hello {=World}", and the inner string is: "World". ' +
+      'So the outer token name of the inner string will be "=World"',
+  )
+  .string(args.TRANSFORM)
+  .boolean(args.GEN_FBT_NODES)
+  .default(args.GEN_FBT_NODES, false)
+  .describe(
+    args.GEN_FBT_NODES,
+    'Generate the abstract representation of the fbt callsites as FbtNode trees.',
+  )
+  .string(args.TRANSFORM)
+  .default(args.TRANSFORM, null)
+  .describe(
+    args.TRANSFORM,
+    'A custom transform to call into rather than the default provided. ' +
+      'Expects a signature of (source, options, filename) => mixed, and ' +
+      'for babel-pluginf-fbt to be run within the transform.',
+  )
   .array(args.PLUGINS)
   .default(args.PLUGINS, [])
   .describe(
@@ -125,21 +154,16 @@ const argv = yargs
     args.OPTIONS,
     'additional options that fbt(..., {can: "take"}).  ' +
       `i.e. --${args.OPTIONS} "locale,qux,id"`,
+  )
+  .string(args.CUSTOM_COLLECTOR)
+  .describe(
+    args.CUSTOM_COLLECTOR,
+    `In some complex scenarios, passing custom Babel presets or plugins to preprocess ` +
+      `the input JS is not flexible enough. As an alternative, you can provide your own ` +
+      `implementation of the FbtCollector module. ` +
+      `It must at least expose the same public methods to expose the extract fbt phrases.\n` +
+      `i.e. --${args.CUSTOM_COLLECTOR} myFbtCollector.js`,
   ).argv;
-
-const packager = argv[args.PACKAGER];
-
-function getHasher(): HashFunction {
-  let hashPhrases = null;
-  if (packager === packagerTypes.TEXT || packager === packagerTypes.BOTH) {
-    // $FlowExpectedError[unsupported-syntax] Requiring dynamic module
-    hashPhrases = require(argv[args.HASH]);
-    if (hashPhrases.hashPhrases != null) {
-      hashPhrases = hashPhrases.hashPhrases;
-    }
-  }
-  return nullthrows(hashPhrases);
-}
 
 const extraOptions = {};
 const cliExtraOptions = argv[args.OPTIONS];
@@ -149,16 +173,21 @@ if (cliExtraOptions) {
     extraOptions[opts[ii]] = true;
   }
 }
+const transformPath = argv[args.TRANSFORM];
+// $FlowExpectedError[unsupported-syntax] Requiring dynamic module
+const transform = transformPath ? require(transformPath) : null;
 
-const fbtCollector = new FbtCollector(
+const fbtCollector = getFbtCollector(
   {
-    auxiliaryTexts: argv[args.AUXILIARY_TEXTS],
+    generateOuterTokenName: argv[args.GEN_OUTER_TOKEN_NAME],
     plugins: argv[args.PLUGINS].map(require),
     presets: argv[args.PRESETS].map(require),
     reactNativeMode: argv[args.REACT_NATIVE_MODE],
+    transform,
     fbtCommonPath: argv[args.COMMON_STRINGS],
   },
   extraOptions,
+  argv[args.CUSTOM_COLLECTOR],
 );
 
 function processJsonSource(source) {
@@ -173,23 +202,14 @@ function processJsonSource(source) {
 }
 
 function writeOutput() {
+  const packagers = getPackagers(argv[args.PACKAGER], argv[args.HASH]);
+  const output = buildCollectFbtOutput(fbtCollector, packagers, {
+    terse: argv[args.TERSE],
+    genFbtNodes: argv[args.GEN_FBT_NODES],
+  });
   process.stdout.write(
     JSON.stringify(
-      {
-        phrases: getPackagers()
-          .reduce(
-            (phrases, packager) => packager.pack(phrases),
-            fbtCollector.getPhrases(),
-          )
-          .map(phrase => {
-            if (argv[args.TERSE]) {
-              const {jsfbt: _, ...phraseWithoutJSFBT} = phrase;
-              return phraseWithoutJSFBT;
-            }
-            return phrase;
-          }),
-        childParentMappings: fbtCollector.getChildParentMappings(),
-      },
+      (output: CollectFbtOutput),
       ...(argv[args.PRETTY] ? [null, ' '] : []),
     ),
   );
@@ -198,13 +218,21 @@ function writeOutput() {
   const errs = fbtCollector.getErrors();
   const errCount = Object.keys(errs).length;
   if (errCount > 0) {
+    const childErrorMessages = [];
     for (const filePath in errs) {
       const error = errs[filePath];
-      process.stderr.write(
-        `[file="${filePath}"]:\n\t` + String(error.stack || error) + '\n',
-      );
+      const childErrorMessage =
+        `[file="${filePath}"]:\n\t` + String(error.stack || error);
+      process.stderr.write(childErrorMessage + '\n');
+      childErrorMessages.push(childErrorMessage);
     }
-    throw new Error(`Failed in ${errCount} file(s).`);
+    const overallError = new Error(
+      `Failed in ${errCount} file(s).` +
+        `\nCurrent working directory: '${process.cwd()}'`,
+    );
+    // $FlowExpectedError[prop-missing] Adding a custom error field
+    overallError.childErrorMessages = childErrorMessages;
+    throw overallError;
   }
 }
 
@@ -213,21 +241,6 @@ function processSource(source) {
     processJsonSource(source);
   } else {
     fbtCollector.collectFromOneFile(source);
-  }
-}
-
-function getPackagers() {
-  switch (packager) {
-    case packagerTypes.TEXT:
-      return [new TextPackager(getHasher())];
-    case packagerTypes.PHRASE:
-      return [new PhrasePackager()];
-    case packagerTypes.BOTH:
-      return [new TextPackager(getHasher()), new PhrasePackager()];
-    case packagerTypes.NONE:
-      return [{pack: phrases => phrases}];
-    default:
-      throw new Error('Unrecognized packager option');
   }
 }
 
@@ -241,7 +254,7 @@ if (argv[args.HELP]) {
   stream.on('data', function (chunk) {
     source += chunk;
   });
-  stream.on('end', function () {
+  stream.on('end', () => {
     processSource(source);
     writeOutput();
   });

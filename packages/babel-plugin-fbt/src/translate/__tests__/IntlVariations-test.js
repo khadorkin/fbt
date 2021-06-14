@@ -1,7 +1,7 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @flow strict
  * @format
  */
@@ -20,8 +20,6 @@ describe('IntlVariations', () => {
 
   describe('when compared with the client-side IntlVariations', () => {
     beforeEach(() => {
-      // one "../" parent folder higher since this file is supposed
-      // to run (transpiled) in the "dist" subfolder.
       ClientSideIntlVariations = require('../../../../../runtime/nonfb/IntlVariations');
     });
 

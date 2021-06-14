@@ -1,76 +1,49 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  */
+
 'use strict';
 
-const childProcess = require('child_process');
+const {packagerTypes} = require('../collectFbtConstants');
+const {
+  buildCollectFbtOutput,
+  getFbtCollector,
+  getPackagers,
+} = require('../collectFbtUtils.js');
 const path = require('path');
-
-const commonPath = path.resolve(__dirname, 'FbtCommonForTests.json');
+const fbtCommonPath = path.resolve(__dirname, 'FbtCommonForTests.json');
 
 describe('collectFbt', () => {
   function collect(source, options = {}) {
-    const scriptPath = path.join(
-      // Find the actual module root path
-      // It's dependent on the "main" path set in package.json
-      // See https://stackoverflow.com/a/49455609/104598
-      path.dirname(require.resolve('babel-plugin-fbt')),
-      'bin',
-      'collectFbt',
+    const opts = {
+      generateOuterTokenName: options.genOuterTokenName,
+      plugins: [],
+      presets: [],
+      reactNativeMode: options.react_native_mode,
+      transform: null,
+      fbtCommonPath,
+    };
+    const fbtCollector = getFbtCollector(opts, {}, options.customCollector);
+    const packager = options.packagerType ?? packagerTypes.NONE;
+    const packagers = getPackagers(
+      packager,
+      path.join(__dirname, '../md5Texts'),
     );
-    const collectOptions = [
-      scriptPath,
-      '--packager=none',
-      '--fbt-common-path=' + commonPath,
-    ];
-    if (options.react_native_mode || false) {
-      collectOptions.push('--react-native-mode');
-    }
-
-    var child = childProcess.spawnSync(
-      process.env.NODE_BINARY || 'node',
-      collectOptions,
-      {input: source},
-    );
-
-    if (
-      (child.stderr && child.stderr.toString() !== '') ||
-      child.error ||
-      child.status !== 0
-    ) {
-      throw new Error(
-        (child.stderr && child.stderr.toString()) ||
-          child.error ||
-          'Child process exited with code ' + child.status,
-      );
-    }
-
-    const stdout = child.stdout.toString();
-    try {
-      return JSON.parse(stdout);
-    } catch (error) {
-      error.message += `\nstdout:\n----\n${stdout}\n----`;
-      throw error;
-    }
+    fbtCollector.collectFromOneFile(source);
+    const output = buildCollectFbtOutput(fbtCollector, packagers, {
+      terse: options.terse,
+      genFbtNodes: options.genFbtNodes,
+    });
+    // Mimic collectFbt output: strip undefined fields, and normalize objects
+    return JSON.parse(JSON.stringify(output));
   }
 
   it('should extract strings', () => {
     var res = collect('const fbt = require(\'fbt\');<fbt desc="foo">bar</fbt>');
-
-    var expected = {
-      type: 'text',
-      desc: 'foo',
-      jsfbt: 'bar',
-    };
-
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
+    expect(res).toMatchSnapshot();
   });
 
   it('should still extract strings if file-level doNotExtract is set to false', () => {
@@ -81,17 +54,7 @@ describe('collectFbt', () => {
         '<fbt desc="foo">bar</fbt>',
       ].join('\n'),
     );
-
-    var expected = {
-      type: 'text',
-      desc: 'foo',
-      jsfbt: 'bar',
-    };
-
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
+    expect(res).toMatchSnapshot();
   });
 
   it('should not extract strings if file-level doNotExtract is set to true', () => {
@@ -106,6 +69,18 @@ describe('collectFbt', () => {
     expect(res.phrases.length).toEqual(0);
   });
 
+  it('should still extract strings when in-line doNotExtract is set to false despite the file-level has doNotExtract set to true', () => {
+    var res = collect(
+      [
+        '// @fbt {"project": "someproject", "doNotExtract": true}',
+        "const fbt = require('fbt');",
+        '<fbt desc="foo" doNotExtract="false">bar</fbt>',
+      ].join('\n'),
+    );
+
+    expect(res.phrases.length).toEqual(1);
+  });
+
   it('should still extract strings if in-line doNotExtract is set to false', () => {
     var res = collect(
       [
@@ -114,16 +89,7 @@ describe('collectFbt', () => {
       ].join('\n'),
     );
 
-    var expected = {
-      type: 'text',
-      desc: 'foo',
-      jsfbt: 'bar',
-    };
-
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
+    expect(res).toMatchSnapshot();
   });
 
   it('should not extract strings if in-line doNotExtract is set to true', () => {
@@ -145,16 +111,7 @@ describe('collectFbt', () => {
       ].join('\n'),
     );
 
-    var expected = {
-      type: 'text',
-      desc: 'foo',
-      jsfbt: 'bar',
-    };
-
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
+    expect(res).toMatchSnapshot();
   });
 
   it('should not extract strings if fbt call param doNotExtract is set to true', () => {
@@ -178,16 +135,7 @@ describe('collectFbt', () => {
       ].join('\n'),
     );
 
-    var expected = {
-      type: 'text',
-      desc: 'foo',
-      jsfbt: 'bar',
-    };
-
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
+    expect(res).toMatchSnapshot();
   });
 
   it('should extract common strings', () => {
@@ -195,31 +143,13 @@ describe('collectFbt', () => {
       "const fbt = require('fbt');<fbt common={true}>Required</fbt>;",
     );
 
-    var expected = {
-      type: 'text',
-      desc: 'Indicates an editor field is required.',
-      jsfbt: 'Required',
-    };
-
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
+    expect(res).toMatchSnapshot();
   });
 
   it('should extract fbt.c strings', () => {
     var res = collect("const fbt = require('fbt');fbt.c('Required');");
 
-    var expected = {
-      type: 'text',
-      desc: 'Indicates an editor field is required.',
-      jsfbt: 'Required',
-    };
-
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
+    expect(res).toMatchSnapshot();
   });
 
   it('should dedupe fbt:plurals', () => {
@@ -236,237 +166,97 @@ describe('collectFbt', () => {
         `</fbt>`,
       ].join('\n'),
     );
-    expect(res).toEqual({
-      childParentMappings: {},
-      phrases: [
-        {
-          col_beg: 0,
-          col_end: 6,
-          desc: 'desc...',
-          jsfbt: {
-            m: [
-              null,
-              {
-                singular: true,
-                token: 'number',
-                type: 2,
-              },
-            ],
-            t: {
-              '*': {
-                '*': 'There are {number} photos.',
-              },
-              _1: {
-                _1: 'There is 1 photo.',
-              },
-            },
-          },
-          line_beg: 2,
-          line_end: 9,
-          project: '',
-          type: 'table',
-        },
-      ],
-    });
+
+    expect(res).toMatchSnapshot();
   });
 
-  it('should extract correctly from templates', () => {
-    // using templates with just string contents
-    var res = collect(
-      [
-        "const fbt = require('fbt');",
-        'const uh = 0;',
-        'fbt(`simple`, "ok");',
-      ].join('\n'),
-    );
+  describe('When using string templates', () => {
+    it('should extract correctly with just string contents', () => {
+      const res = collect(
+        [
+          "const fbt = require('fbt');",
+          'const uh = 0;',
+          'fbt(`simple`, "ok");',
+        ].join('\n'),
+      );
 
-    var expected = {
-      type: 'text',
-      desc: 'ok',
-      jsfbt: 'simple',
-    };
+      expect(res).toMatchSnapshot();
+    });
 
-    actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
+    it('should extract correctly with a param', () => {
+      const res = collect(
+        [
+          "const fbt = require('fbt');",
+          'const uh = 0;',
+          'fbt(`testing ${fbt.param("it", uh)} works`, "great");',
+        ].join('\n'),
+      );
 
-    expect(actual).toEqual(expected);
+      expect(res).toMatchSnapshot();
+    });
 
-    // with a param
-    res = collect(
-      [
-        "const fbt = require('fbt');",
-        'const uh = 0;',
-        'fbt(`testing ${fbt.param("it", uh)} works`, "great");',
-      ].join('\n'),
-    );
+    it('should extract correctly with the param being first', () => {
+      const res = collect(
+        [
+          "const fbt = require('fbt');",
+          'const uh = 0;',
+          'fbt(`${fbt.param("it", uh)} still works`, "well");',
+        ].join('\n'),
+      );
 
-    expected = {
-      type: 'text',
-      desc: 'great',
-      jsfbt: 'testing {it} works',
-    };
+      expect(res).toMatchSnapshot();
+    });
 
-    var actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
+    it('should extract correctly multiple params', () => {
+      const res = collect(
+        [
+          "const fbt = require('fbt');",
+          'const uh = 0;',
+          'fbt(`${fbt.param("1", uh)} ${fbt.param("2", uh)} ${fbt.sameParam("3")} 4`, "counting");',
+        ].join('\n'),
+      );
 
-    expect(actual).toEqual(expected);
+      expect(res).toMatchSnapshot();
+    });
 
-    // with the param being first
-    res = collect(
-      [
-        "const fbt = require('fbt');",
-        'const uh = 0;',
-        'fbt(`${fbt.param("it", uh)} still works`, "well");',
-      ].join('\n'),
-    );
+    it('should extract correctly supports tables ie fbt:enum', () => {
+      const res = collect(
+        [
+          "const fbt = require('fbt');",
+          'const uh = 0;',
+          "fbt(`${fbt.enum(uh, {0:'a', 1:'b'})} ${fbt.param(\"2\", uh)}\n" +
+            '${fbt.sameParam("3")} 4`, "counting");',
+        ].join('\n'),
+      );
+      expect(res).toMatchSnapshot();
+    });
 
-    expected = {
-      type: 'text',
-      desc: 'well',
-      jsfbt: '{it} still works',
-    };
+    it('should extract correctly name, pronoun, plural', () => {
+      const res = collect(
+        [
+          "const fbt = require('fbt');",
+          "const IntlVariations = require('IntlVariations');",
+          'const gender = IntlVariations.GENDER_FEMALE;',
+          "fbt(`${fbt.name('name', 'Sally', gender)} sells ${fbt.pronoun('possessive', gender)} ${fbt.plural('item', 5)}`, 'desc');",
+        ].join('\n'),
+      );
+      expect(res).toMatchSnapshot();
+    });
 
-    actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
-
-    // multiple params
-    res = collect(
-      [
-        "const fbt = require('fbt');",
-        'const uh = 0;',
-        'fbt(`${fbt.param("1", uh)} ${fbt.param("2", uh)} ${fbt.sameParam("3")} 4`, "counting");',
-      ].join('\n'),
-    );
-
-    expected = {
-      type: 'text',
-      desc: 'counting',
-      jsfbt: '{1} {2} {3} 4',
-    };
-
-    actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-
-    expect(actual).toEqual(expected);
-
-    // supports tables ie fbt:enum
-    res = collect(
-      [
-        "const fbt = require('fbt');",
-        'const uh = 0;',
-        "fbt(`${fbt.enum(uh, {0:'a', 1:'b'})} ${fbt.param(\"2\", uh)}\n" +
-          '${fbt.sameParam("3")} 4`, "counting");',
-      ].join('\n'),
-    );
-    expected = {
-      type: 'table',
-      desc: 'counting',
-      jsfbt: {
-        m: [null],
-        t: {
-          0: 'a {2} {3} 4',
-          1: 'b {2} {3} 4',
+    it('should extract correctly name, pronoun, plural (react native)', () => {
+      const res = collect(
+        [
+          "const fbt = require('fbt');",
+          "const IntlVariations = require('IntlVariations');",
+          'const gender = IntlVariations.GENDER_FEMALE;',
+          "fbt(`${fbt.name('name', 'Sally', gender)} sells ${fbt.pronoun('possessive', gender)} ${fbt.plural('item', 5)}`, 'desc');",
+        ].join('\n'),
+        {
+          react_native_mode: true,
         },
-      },
-    };
-    actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-    expect(actual).toEqual(expected);
-
-    // name, pronoun, plural
-    res = collect(
-      [
-        "const fbt = require('fbt');",
-        "const IntlVariations = require('IntlVariations');",
-        'const gender = IntlVariations.GENDER_FEMALE;',
-        "fbt(`${fbt.name('name', 'Sally', gender)} sells ${fbt.pronoun('possessive', gender)} ${fbt.plural('item', 5)}`, 'desc');",
-      ].join('\n'),
-    );
-    expected = {
-      type: 'table',
-      desc: 'desc',
-      jsfbt: {
-        m: [
-          {
-            token: 'name',
-            type: 1,
-          },
-          null,
-          null,
-        ],
-        t: {
-          '*': {
-            '*': {
-              '*': '{name} sells their items',
-              _1: '{name} sells their item',
-            },
-            1: {
-              '*': '{name} sells her items',
-              _1: '{name} sells her item',
-            },
-            2: {
-              '*': '{name} sells his items',
-              _1: '{name} sells his item',
-            },
-          },
-        },
-      },
-    };
-    actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-    expect(actual).toEqual(expected);
-
-    // name, pronoun, plural (react native)
-    res = collect(
-      [
-        "const fbt = require('fbt');",
-        "const IntlVariations = require('IntlVariations');",
-        'const gender = IntlVariations.GENDER_FEMALE;',
-        "fbt(`${fbt.name('name', 'Sally', gender)} sells ${fbt.pronoun('possessive', gender)} ${fbt.plural('item', 5)}`, 'desc');",
-      ].join('\n'),
-      {
-        react_native_mode: true,
-      },
-    );
-    expected = {
-      type: 'table',
-      desc: 'desc',
-      jsfbt: {
-        m: [
-          {
-            token: 'name',
-            type: 1,
-          },
-          {
-            type: 3,
-          },
-          {
-            type: 2,
-          },
-        ],
-        t: {
-          '*': {
-            '*': {
-              '*': '{name} sells their items',
-              _1: '{name} sells their item',
-            },
-            1: {
-              '*': '{name} sells her items',
-              _1: '{name} sells her item',
-            },
-            2: {
-              '*': '{name} sells his items',
-              _1: '{name} sells his item',
-            },
-          },
-        },
-      },
-    };
-    actual = {};
-    Object.keys(expected).map(key => (actual[key] = res.phrases[0][key]));
-    expect(actual).toEqual(expected);
+      );
+      expect(res).toMatchSnapshot();
+    });
   });
 
   it('should throw on invalid template use', () => {
@@ -479,5 +269,107 @@ describe('collectFbt', () => {
         ].join('\n'),
       );
     expect(test).toThrow();
+  });
+
+  it('should extract strings from a custom collector', () => {
+    expect(
+      collect('nothing in JS code', {
+        customCollector: path.resolve(__dirname, 'CustomFbtCollector.js'),
+      }),
+    ).toMatchSnapshot();
+  });
+
+  it('should expose the outer token names if needed', () => {
+    expect(
+      collect(
+        `const fbt = require('fbt');
+        <fbt desc="Expose outer token name when script option is given">
+          Hello
+          <i>World</i>
+        </fbt>`,
+        {
+          genOuterTokenName: true,
+        },
+      ),
+    ).toMatchSnapshot();
+  });
+
+  it('should not expose the outer token names by default', () => {
+    expect(
+      collect(
+        `const fbt = require('fbt');
+        <fbt desc="Do not expose outer token name by default">
+          Hello
+          <i>World</i>
+        </fbt>`,
+        {},
+      ),
+    ).toMatchSnapshot();
+  });
+
+  describe('fbt nodes:', () => {
+    it('should expose the FbtElementNodes when needed', () => {
+      const ret = collect(
+        `const fbt = require('fbt');
+          <fbt desc="some desc">
+            This is a
+            <a className="neatoLink" href="https://somewhere.random" tabindex={123} id={"uniq"}>
+              link
+            </a>
+          </fbt>`,
+        {packagerType: packagerTypes.TEXT, genFbtNodes: true},
+      );
+
+      const {fbtElementNodes} = ret;
+
+      // Check overall data structure
+      expect(ret).toMatchSnapshot();
+
+      // Check some core data integrity
+      expect(fbtElementNodes.length).toBe(1);
+      expect(fbtElementNodes[0].children[1].phraseIndex).toBe(1);
+      expect(fbtElementNodes[0].phraseIndex).toBe(0);
+      expect(ret.childParentMappings).toEqual({1: 0});
+      expect(ret.phrases.length).toBe(2);
+    });
+
+    it('should expose the FbtElementNodes where there are two nested React elements', () => {
+      const ret = collect(
+        `const fbt = require('fbt');
+        <fbt desc="example 1">
+          <fbt:param name="name" gender={this.state.ex1Gender}>
+            <b className="padRight">{this.state.ex1Name}</b>
+          </fbt:param>
+          has shared
+          <a className="neatoLink" href="#" tabindex={123} id={"uniq"}>
+            <strong>
+              <fbt:plural
+                many="photos"
+                showCount="ifMany"
+                count={this.state.ex1Count}>
+                a photo
+              </fbt:plural>
+            </strong>
+          </a>
+          with you
+        </fbt>;`,
+        {packagerType: packagerTypes.TEXT, genFbtNodes: true},
+      );
+
+      const {fbtElementNodes} = ret;
+
+      // Check overall data structure
+      expect(ret).toMatchSnapshot();
+
+      // Check some core data integrity
+      expect(fbtElementNodes.length).toBe(1);
+      expect(fbtElementNodes[0].children[2].phraseIndex).toBe(1);
+      expect(fbtElementNodes[0].phraseIndex).toBe(0);
+      expect(ret.childParentMappings).toEqual({
+        1: 0,
+        2: 1,
+      });
+      expect(ret.phrases.length).toBe(3);
+    });
   });
 });

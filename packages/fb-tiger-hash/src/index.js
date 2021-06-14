@@ -1,7 +1,7 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  *
  * @format
  * @flow strict
@@ -9,12 +9,12 @@
 
 'use strict';
 
+const getFbtHash = require('./getFbtHash');
 const Tiger = require('./Tiger');
-const hashPhrases = require('./hashPhrases');
 
 module.exports = {
   __esModule: true,
   default: Tiger,
+  getFbtHash,
   Tiger,
-  hashPhrases,
 };

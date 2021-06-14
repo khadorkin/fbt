@@ -1,7 +1,7 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  */
 
@@ -124,7 +124,8 @@ const expectedRelationships = [
   {'1': 0, '3': 2},
 ];
 
-describe('Test inner-outer strings in JS', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('Test inner-outer strings in JS', () => {
   it('should collect correct parent child relationships', () => {
     for (var ii = 0; ii < testData.length; ++ii) {
       testChildToParentRelationships(testData[ii], expectedRelationships[ii]);

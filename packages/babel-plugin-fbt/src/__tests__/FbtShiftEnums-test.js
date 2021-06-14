@@ -1,388 +1,966 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
+ * @flow strict-local
  */
 
 'use strict';
 
-const {FbtType} = require('../FbtConstants');
+import type {Phrase, TableJSFBT, TableJSFBTTree} from '../index';
+
 const {
   extractEnumsAndFlattenPhrases,
   shiftEnumsToTop,
 } = require('../FbtShiftEnums');
 const {FbtVariationType} = require('../translate/IntlVariations');
 
-const extractEnumsAndFlattenPhrasesTestData = [
+const extractEnumsAndFlattenPhrasesTestData: Array<{
+  name: string,
+  input: Array<$Shape<Phrase>>,
+  output: Array<$Shape<Phrase>>,
+}> = [
   {
     name: 'text and table with no enums should stay the same',
     input: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+            {
+              token: 'count',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
             _1: {
-              _1: 'Click 1 time to see 1 photo',
-              '*': 'Click 1 time to see {count} photos',
+              _1: {
+                desc: 'Table Desc',
+                text: 'Click 1 time to see 1 photo',
+                tokenAliases: {},
+              },
+              '*': {
+                desc: 'Table Desc',
+                text: 'Click 1 time to see {count} photos',
+                tokenAliases: {},
+              },
             },
             '*': {
-              _1: 'Click {num} times to see 1 photo',
-              '*': 'Click {num} times to see {count} photos',
+              _1: {
+                desc: 'Table Desc',
+                text: 'Click {num} times to see 1 photo',
+                tokenAliases: {},
+              },
+              '*': {
+                desc: 'Table Desc',
+                text: 'Click {num} times to see {count} photos',
+                tokenAliases: {},
+              },
             },
           },
-          m: [
-            {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-            {token: 'count', type: FbtVariationType.NUMBER, singular: true},
-          ],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
     output: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+            {
+              token: 'count',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
             _1: {
-              _1: 'Click 1 time to see 1 photo',
-              '*': 'Click 1 time to see {count} photos',
+              _1: {
+                desc: 'Table Desc',
+                text: 'Click 1 time to see 1 photo',
+                tokenAliases: {},
+              },
+              '*': {
+                desc: 'Table Desc',
+                text: 'Click 1 time to see {count} photos',
+                tokenAliases: {},
+              },
             },
             '*': {
-              _1: 'Click {num} times to see 1 photo',
-              '*': 'Click {num} times to see {count} photos',
+              _1: {
+                desc: 'Table Desc',
+                text: 'Click {num} times to see 1 photo',
+                tokenAliases: {},
+              },
+              '*': {
+                desc: 'Table Desc',
+                text: 'Click {num} times to see {count} photos',
+                tokenAliases: {},
+              },
             },
           },
-          m: [
-            {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-            {token: 'count', type: FbtVariationType.NUMBER, singular: true},
-          ],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
   },
   {
     name: 'single level enum table should be flattened to texts',
     input: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
           t: {
-            photos: 'Click to see photos',
-            groups: 'Click to see groups',
-            comments: 'Click to see comments',
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
           },
-          m: [{range: ['photos', 'groups', 'comments']}],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [
+            {
+              range: ['photos', 'groups', 'comments'],
+            },
+          ],
+          t: {
+            photos: {
+              desc: 'Table Desc',
+              text: 'Click to see photos',
+              tokenAliases: {},
+            },
+            groups: {
+              desc: 'Table Desc',
+              text: 'Click to see groups',
+              tokenAliases: {},
+            },
+            comments: {
+              desc: 'Table Desc',
+              text: 'Click to see comments',
+              tokenAliases: {},
+            },
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
     output: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
-      {type: FbtType.TEXT, jsfbt: 'Click to see photos', desc: 'Table Desc'},
-      {type: FbtType.TEXT, jsfbt: 'Click to see groups', desc: 'Table Desc'},
-      {type: FbtType.TEXT, jsfbt: 'Click to see comments', desc: 'Table Desc'},
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click to see photos',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click to see groups',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click to see comments',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
   },
   {
     name: 'multiple level enum table should be flattened to texts',
     input: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [
+            {
+              range: ['here', 'there'],
+            },
+            {
+              range: ['photos', 'groups', 'comments'],
+            },
+          ],
           t: {
             here: {
-              photos: 'Click here to see photos',
-              groups: 'Click here to see groups',
-              comments: 'Click here to see comments',
+              photos: {
+                desc: 'Table Desc',
+                text: 'Click here to see photos',
+                tokenAliases: {},
+              },
+              groups: {
+                desc: 'Table Desc',
+                text: 'Click here to see groups',
+                tokenAliases: {},
+              },
+              comments: {
+                desc: 'Table Desc',
+                text: 'Click here to see comments',
+                tokenAliases: {},
+              },
             },
             there: {
-              photos: 'Click there to see photos',
-              groups: 'Click there to see groups',
-              comments: 'Click there to see comments',
+              photos: {
+                desc: 'Table Desc',
+                text: 'Click there to see photos',
+                tokenAliases: {},
+              },
+              groups: {
+                desc: 'Table Desc',
+                text: 'Click there to see groups',
+                tokenAliases: {},
+              },
+              comments: {
+                desc: 'Table Desc',
+                text: 'Click there to see comments',
+                tokenAliases: {},
+              },
             },
           },
-          m: [
-            {range: ['here', 'there']},
-            {range: ['photos', 'groups', 'comments']},
-          ],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
-
     output: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TEXT,
-        jsfbt: 'Click here to see photos',
-        desc: 'Table Desc',
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
       },
       {
-        type: FbtType.TEXT,
-        jsfbt: 'Click here to see groups',
-        desc: 'Table Desc',
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click here to see photos',
+            tokenAliases: {},
+          },
+        },
       },
       {
-        type: FbtType.TEXT,
-        jsfbt: 'Click here to see comments',
-        desc: 'Table Desc',
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click here to see groups',
+            tokenAliases: {},
+          },
+        },
       },
       {
-        type: FbtType.TEXT,
-        jsfbt: 'Click there to see photos',
-        desc: 'Table Desc',
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click here to see comments',
+            tokenAliases: {},
+          },
+        },
       },
       {
-        type: FbtType.TEXT,
-        jsfbt: 'Click there to see groups',
-        desc: 'Table Desc',
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click there to see photos',
+            tokenAliases: {},
+          },
+        },
       },
       {
-        type: FbtType.TEXT,
-        jsfbt: 'Click there to see comments',
-        desc: 'Table Desc',
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click there to see groups',
+            tokenAliases: {},
+          },
+        },
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Table Desc',
+            text: 'Click there to see comments',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
   },
   {
     name: 'sub-tables should be extracted (one enum)',
     input: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+            {
+              range: ['photos', 'posts'],
+            },
+          ],
           t: {
             _1: {
-              photos: 'Click 1 time to see photos',
-              posts: 'Click 1 time to see posts',
+              photos: {
+                desc: 'Table Desc',
+                text: 'Click 1 time to see photos',
+                tokenAliases: {},
+              },
+              posts: {
+                desc: 'Table Desc',
+                text: 'Click 1 time to see posts',
+                tokenAliases: {},
+              },
             },
             '*': {
-              photos: 'Click {num} times to see photos',
-              posts: 'Click {num} times to see posts',
+              photos: {
+                desc: 'Table Desc',
+                text: 'Click {num} times to see photos',
+                tokenAliases: {},
+              },
+              posts: {
+                desc: 'Table Desc',
+                text: 'Click {num} times to see posts',
+                tokenAliases: {},
+              },
             },
           },
-          m: [
-            {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-            {range: ['photos', 'posts']},
-          ],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
     output: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
           t: {
-            _1: 'Click 1 time to see photos',
-            '*': 'Click {num} times to see photos',
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
-            _1: 'Click 1 time to see posts',
-            '*': 'Click {num} times to see posts',
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click 1 time to see photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click {num} times to see photos',
+              tokenAliases: {},
+            },
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
+          t: {
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click 1 time to see posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click {num} times to see posts',
+              tokenAliases: {},
+            },
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
   },
   {
     name: 'sub-tables should be extracted (multiple enums)',
     input: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [
+            {
+              range: ['here', 'there'],
+            },
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+            {
+              range: ['photos', 'posts'],
+            },
+          ],
           t: {
             here: {
               _1: {
-                photos: 'Click here 1 time to see photos',
-                posts: 'Click here 1 time to see posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click here 1 time to see photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click here 1 time to see posts',
+                  tokenAliases: {},
+                },
               },
               '*': {
-                photos: 'Click here {num} times to see photos',
-                posts: 'Click here {num} times to see posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click here {num} times to see photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click here {num} times to see posts',
+                  tokenAliases: {},
+                },
               },
             },
             there: {
               _1: {
-                photos: 'Click there 1 time to see photos',
-                posts: 'Click there 1 time to see posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click there 1 time to see photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click there 1 time to see posts',
+                  tokenAliases: {},
+                },
               },
               '*': {
-                photos: 'Click there {num} times to see photos',
-                posts: 'Click there {num} times to see posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click there {num} times to see photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click there {num} times to see posts',
+                  tokenAliases: {},
+                },
               },
             },
           },
-          m: [
-            {range: ['here', 'there']},
-            {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-            {range: ['photos', 'posts']},
-          ],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
     output: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
           t: {
-            _1: 'Click here 1 time to see photos',
-            '*': 'Click here {num} times to see photos',
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
-            _1: 'Click here 1 time to see posts',
-            '*': 'Click here {num} times to see posts',
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click here 1 time to see photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click here {num} times to see photos',
+              tokenAliases: {},
+            },
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
-            _1: 'Click there 1 time to see photos',
-            '*': 'Click there {num} times to see photos',
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click here 1 time to see posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click here {num} times to see posts',
+              tokenAliases: {},
+            },
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
-            _1: 'Click there 1 time to see posts',
-            '*': 'Click there {num} times to see posts',
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click there 1 time to see photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click there {num} times to see photos',
+              tokenAliases: {},
+            },
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
+          t: {
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click there 1 time to see posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click there {num} times to see posts',
+              tokenAliases: {},
+            },
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
   },
   {
     name: 'sub-tables should be extracted (multiple enums at bottom)',
     input: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+            {
+              range: ['see', 'eat'],
+            },
+            {
+              range: ['photos', 'posts'],
+            },
+          ],
           t: {
             _1: {
               see: {
-                photos: 'Click here 1 time to see photos',
-                posts: 'Click here 1 time to see posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click here 1 time to see photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click here 1 time to see posts',
+                  tokenAliases: {},
+                },
               },
               eat: {
-                photos: 'Click here 1 time to eat photos',
-                posts: 'Click here 1 time to eat posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click here 1 time to eat photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click here 1 time to eat posts',
+                  tokenAliases: {},
+                },
               },
             },
             '*': {
               see: {
-                photos: 'Click here {num} times to see photos',
-                posts: 'Click here {num} times to see posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click here {num} times to see photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click here {num} times to see posts',
+                  tokenAliases: {},
+                },
               },
               eat: {
-                photos: 'Click here {num} times to eat photos',
-                posts: 'Click here {num} times to eat posts',
+                photos: {
+                  desc: 'Table Desc',
+                  text: 'Click here {num} times to eat photos',
+                  tokenAliases: {},
+                },
+                posts: {
+                  desc: 'Table Desc',
+                  text: 'Click here {num} times to eat posts',
+                  tokenAliases: {},
+                },
               },
             },
           },
-          m: [
-            {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-            {range: ['see', 'eat']},
-            {range: ['photos', 'posts']},
-          ],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
     output: [
-      {type: FbtType.TEXT, jsfbt: 'Like', desc: 'Text Desc 1'},
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [],
           t: {
-            _1: 'Click here 1 time to see photos',
-            '*': 'Click here {num} times to see photos',
+            desc: 'Text Desc 1',
+            text: 'Like',
+            tokenAliases: {},
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
-            _1: 'Click here 1 time to see posts',
-            '*': 'Click here {num} times to see posts',
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click here 1 time to see photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click here {num} times to see photos',
+              tokenAliases: {},
+            },
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
-            _1: 'Click here 1 time to eat photos',
-            '*': 'Click here {num} times to eat photos',
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click here 1 time to see posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click here {num} times to see posts',
+              tokenAliases: {},
+            },
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
       {
-        type: FbtType.TABLE,
         jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
           t: {
-            _1: 'Click here 1 time to eat posts',
-            '*': 'Click here {num} times to eat posts',
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click here 1 time to eat photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click here {num} times to eat photos',
+              tokenAliases: {},
+            },
           },
-          m: [{token: 'num', type: FbtVariationType.NUMBER, singular: true}],
         },
-        desc: 'Table Desc',
       },
-      {type: FbtType.TEXT, jsfbt: 'Comment', desc: 'Text Desc 2'},
+      {
+        jsfbt: {
+          m: [
+            {
+              token: 'num',
+              type: FbtVariationType.NUMBER,
+              singular: true,
+            },
+          ],
+          t: {
+            _1: {
+              desc: 'Table Desc',
+              text: 'Click here 1 time to eat posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: 'Table Desc',
+              text: 'Click here {num} times to eat posts',
+              tokenAliases: {},
+            },
+          },
+        },
+      },
+      {
+        jsfbt: {
+          m: [],
+          t: {
+            desc: 'Text Desc 2',
+            text: 'Comment',
+            tokenAliases: {},
+          },
+        },
+      },
     ],
   },
 ];
@@ -395,39 +973,100 @@ describe('Test removeEnumsFromPhrases', () => {
   );
 });
 
-const shiftEnumsToTopTestData = [
+const shiftEnumsToTopTestData: Array<{
+  name: string,
+  input: TableJSFBT,
+  output: {
+    shiftedJsfbt: TableJSFBTTree,
+    enumCount: number,
+  },
+}> = [
   {
     name: 'text should stay the same',
-    input: 'Like',
-    output: {shiftedJsfbt: 'Like', enumCount: 0},
+    input: {
+      m: [],
+      t: {
+        desc: '',
+        text: 'Like',
+        tokenAliases: {},
+      },
+    },
+    output: {
+      shiftedJsfbt: {
+        desc: '',
+        text: 'Like',
+        tokenAliases: {},
+      },
+      enumCount: 0,
+    },
   },
   {
     name: 'table with no enums should stay the same',
     input: {
+      m: [
+        {
+          token: 'num',
+          type: FbtVariationType.NUMBER,
+          singular: true,
+        },
+        {
+          token: 'count',
+          type: FbtVariationType.NUMBER,
+          singular: true,
+        },
+      ],
       t: {
         _1: {
-          _1: 'Click 1 time to see 1 photo',
-          '*': 'Click 1 time to see {count} photos',
+          _1: {
+            desc: '',
+            text: 'Click 1 time to see 1 photo',
+            tokenAliases: {},
+          },
+          '*': {
+            desc: '',
+            text: 'Click 1 time to see {count} photos',
+            tokenAliases: {},
+          },
         },
         '*': {
-          _1: 'Click {num} times to see 1 photo',
-          '*': 'Click {num} times to see {count} photos',
+          _1: {
+            desc: '',
+            text: 'Click {num} times to see 1 photo',
+            tokenAliases: {},
+          },
+          '*': {
+            desc: '',
+            text: 'Click {num} times to see {count} photos',
+            tokenAliases: {},
+          },
         },
       },
-      m: [
-        {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-        {token: 'count', type: FbtVariationType.NUMBER, singular: true},
-      ],
     },
     output: {
       shiftedJsfbt: {
         _1: {
-          _1: 'Click 1 time to see 1 photo',
-          '*': 'Click 1 time to see {count} photos',
+          _1: {
+            desc: '',
+            text: 'Click 1 time to see 1 photo',
+            tokenAliases: {},
+          },
+          '*': {
+            desc: '',
+            text: 'Click 1 time to see {count} photos',
+            tokenAliases: {},
+          },
         },
         '*': {
-          _1: 'Click {num} times to see 1 photo',
-          '*': 'Click {num} times to see {count} photos',
+          _1: {
+            desc: '',
+            text: 'Click {num} times to see 1 photo',
+            tokenAliases: {},
+          },
+          '*': {
+            desc: '',
+            text: 'Click {num} times to see {count} photos',
+            tokenAliases: {},
+          },
         },
       },
       enumCount: 0,
@@ -436,18 +1075,46 @@ const shiftEnumsToTopTestData = [
   {
     name: 'single level enum table should stay the same',
     input: {
+      m: [
+        {
+          range: ['photos', 'groups', 'comments'],
+        },
+      ],
       t: {
-        photos: 'Click to see photos',
-        groups: 'Click to see groups',
-        comments: 'Click to see comments',
+        photos: {
+          desc: '',
+          text: 'Click to see photos',
+          tokenAliases: {},
+        },
+        groups: {
+          desc: '',
+          text: 'Click to see groups',
+          tokenAliases: {},
+        },
+        comments: {
+          desc: '',
+          text: 'Click to see comments',
+          tokenAliases: {},
+        },
       },
-      m: [{range: ['photos', 'groups', 'comments']}],
     },
     output: {
       shiftedJsfbt: {
-        photos: 'Click to see photos',
-        groups: 'Click to see groups',
-        comments: 'Click to see comments',
+        photos: {
+          desc: '',
+          text: 'Click to see photos',
+          tokenAliases: {},
+        },
+        groups: {
+          desc: '',
+          text: 'Click to see groups',
+          tokenAliases: {},
+        },
+        comments: {
+          desc: '',
+          text: 'Click to see comments',
+          tokenAliases: {},
+        },
       },
       enumCount: 1,
     },
@@ -455,34 +1122,86 @@ const shiftEnumsToTopTestData = [
   {
     name: 'multiple level enum table should stay the same',
     input: {
+      m: [
+        {
+          range: ['here', 'there'],
+        },
+        {
+          range: ['photos', 'groups', 'comments'],
+        },
+      ],
       t: {
         here: {
-          photos: 'Click here to see photos',
-          groups: 'Click here to see groups',
-          comments: 'Click here to see comments',
+          photos: {
+            desc: '',
+            text: 'Click here to see photos',
+            tokenAliases: {},
+          },
+          groups: {
+            desc: '',
+            text: 'Click here to see groups',
+            tokenAliases: {},
+          },
+          comments: {
+            desc: '',
+            text: 'Click here to see comments',
+            tokenAliases: {},
+          },
         },
         there: {
-          photos: 'Click there to see photos',
-          groups: 'Click there to see groups',
-          comments: 'Click there to see comments',
+          photos: {
+            desc: '',
+            text: 'Click there to see photos',
+            tokenAliases: {},
+          },
+          groups: {
+            desc: '',
+            text: 'Click there to see groups',
+            tokenAliases: {},
+          },
+          comments: {
+            desc: '',
+            text: 'Click there to see comments',
+            tokenAliases: {},
+          },
         },
       },
-      m: [
-        {range: ['here', 'there']},
-        {range: ['photos', 'groups', 'comments']},
-      ],
     },
     output: {
       shiftedJsfbt: {
         here: {
-          photos: 'Click here to see photos',
-          groups: 'Click here to see groups',
-          comments: 'Click here to see comments',
+          photos: {
+            desc: '',
+            text: 'Click here to see photos',
+            tokenAliases: {},
+          },
+          groups: {
+            desc: '',
+            text: 'Click here to see groups',
+            tokenAliases: {},
+          },
+          comments: {
+            desc: '',
+            text: 'Click here to see comments',
+            tokenAliases: {},
+          },
         },
         there: {
-          photos: 'Click there to see photos',
-          groups: 'Click there to see groups',
-          comments: 'Click there to see comments',
+          photos: {
+            desc: '',
+            text: 'Click there to see photos',
+            tokenAliases: {},
+          },
+          groups: {
+            desc: '',
+            text: 'Click there to see groups',
+            tokenAliases: {},
+          },
+          comments: {
+            desc: '',
+            text: 'Click there to see comments',
+            tokenAliases: {},
+          },
         },
       },
       enumCount: 2,
@@ -491,30 +1210,68 @@ const shiftEnumsToTopTestData = [
   {
     name: 'enum level should be moved to top (one enum)',
     input: {
+      m: [
+        {
+          token: 'num',
+          type: FbtVariationType.NUMBER,
+          singular: true,
+        },
+        {
+          range: ['photos', 'posts'],
+        },
+      ],
       t: {
         _1: {
-          photos: 'Click 1 time to see photos',
-          posts: 'Click 1 time to see posts',
+          photos: {
+            desc: '',
+            text: 'Click 1 time to see photos',
+            tokenAliases: {},
+          },
+          posts: {
+            desc: '',
+            text: 'Click 1 time to see posts',
+            tokenAliases: {},
+          },
         },
         '*': {
-          photos: 'Click {num} times to see photos',
-          posts: 'Click {num} times to see posts',
+          photos: {
+            desc: '',
+            text: 'Click {num} times to see photos',
+            tokenAliases: {},
+          },
+          posts: {
+            desc: '',
+            text: 'Click {num} times to see posts',
+            tokenAliases: {},
+          },
         },
       },
-      m: [
-        {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-        {range: ['photos', 'posts']},
-      ],
     },
     output: {
       shiftedJsfbt: {
         photos: {
-          _1: 'Click 1 time to see photos',
-          '*': 'Click {num} times to see photos',
+          _1: {
+            desc: '',
+            text: 'Click 1 time to see photos',
+            tokenAliases: {},
+          },
+          '*': {
+            desc: '',
+            text: 'Click {num} times to see photos',
+            tokenAliases: {},
+          },
         },
         posts: {
-          _1: 'Click 1 time to see posts',
-          '*': 'Click {num} times to see posts',
+          _1: {
+            desc: '',
+            text: 'Click 1 time to see posts',
+            tokenAliases: {},
+          },
+          '*': {
+            desc: '',
+            text: 'Click {num} times to see posts',
+            tokenAliases: {},
+          },
         },
       },
       enumCount: 1,
@@ -523,54 +1280,126 @@ const shiftEnumsToTopTestData = [
   {
     name: 'enum levels should be moved to top (multiple enums)',
     input: {
+      m: [
+        {
+          range: ['here', 'there'],
+        },
+        {
+          token: 'num',
+          type: FbtVariationType.NUMBER,
+          singular: true,
+        },
+        {
+          range: ['photos', 'posts'],
+        },
+      ],
       t: {
         here: {
           _1: {
-            photos: 'Click here 1 time to see photos',
-            posts: 'Click here 1 time to see posts',
+            photos: {
+              desc: '',
+              text: 'Click here 1 time to see photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click here 1 time to see posts',
+              tokenAliases: {},
+            },
           },
           '*': {
-            photos: 'Click here {num} times to see photos',
-            posts: 'Click here {num} times to see posts',
+            photos: {
+              desc: '',
+              text: 'Click here {num} times to see photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click here {num} times to see posts',
+              tokenAliases: {},
+            },
           },
         },
         there: {
           _1: {
-            photos: 'Click there 1 time to see photos',
-            posts: 'Click there 1 time to see posts',
+            photos: {
+              desc: '',
+              text: 'Click there 1 time to see photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click there 1 time to see posts',
+              tokenAliases: {},
+            },
           },
           '*': {
-            photos: 'Click there {num} times to see photos',
-            posts: 'Click there {num} times to see posts',
+            photos: {
+              desc: '',
+              text: 'Click there {num} times to see photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click there {num} times to see posts',
+              tokenAliases: {},
+            },
           },
         },
       },
-      m: [
-        {range: ['here', 'there']},
-        {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-        {range: ['photos', 'posts']},
-      ],
     },
     output: {
       shiftedJsfbt: {
         here: {
           photos: {
-            _1: 'Click here 1 time to see photos',
-            '*': 'Click here {num} times to see photos',
+            _1: {
+              desc: '',
+              text: 'Click here 1 time to see photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click here {num} times to see photos',
+              tokenAliases: {},
+            },
           },
           posts: {
-            _1: 'Click here 1 time to see posts',
-            '*': 'Click here {num} times to see posts',
+            _1: {
+              desc: '',
+              text: 'Click here 1 time to see posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click here {num} times to see posts',
+              tokenAliases: {},
+            },
           },
         },
         there: {
           photos: {
-            _1: 'Click there 1 time to see photos',
-            '*': 'Click there {num} times to see photos',
+            _1: {
+              desc: '',
+              text: 'Click there 1 time to see photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click there {num} times to see photos',
+              tokenAliases: {},
+            },
           },
           posts: {
-            _1: 'Click there 1 time to see posts',
-            '*': 'Click there {num} times to see posts',
+            _1: {
+              desc: '',
+              text: 'Click there 1 time to see posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click there {num} times to see posts',
+              tokenAliases: {},
+            },
           },
         },
       },
@@ -580,54 +1409,126 @@ const shiftEnumsToTopTestData = [
   {
     name: 'enum levels should be moved to top (multiple enums at bottom)',
     input: {
+      m: [
+        {
+          token: 'num',
+          type: FbtVariationType.NUMBER,
+          singular: true,
+        },
+        {
+          range: ['see', 'eat'],
+        },
+        {
+          range: ['photos', 'posts'],
+        },
+      ],
       t: {
         _1: {
           see: {
-            photos: 'Click here 1 time to see photos',
-            posts: 'Click here 1 time to see posts',
+            photos: {
+              desc: '',
+              text: 'Click here 1 time to see photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click here 1 time to see posts',
+              tokenAliases: {},
+            },
           },
           eat: {
-            photos: 'Click here 1 time to eat photos',
-            posts: 'Click here 1 time to eat posts',
+            photos: {
+              desc: '',
+              text: 'Click here 1 time to eat photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click here 1 time to eat posts',
+              tokenAliases: {},
+            },
           },
         },
         '*': {
           see: {
-            photos: 'Click here {num} times to see photos',
-            posts: 'Click here {num} times to see posts',
+            photos: {
+              desc: '',
+              text: 'Click here {num} times to see photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click here {num} times to see posts',
+              tokenAliases: {},
+            },
           },
           eat: {
-            photos: 'Click here {num} times to eat photos',
-            posts: 'Click here {num} times to eat posts',
+            photos: {
+              desc: '',
+              text: 'Click here {num} times to eat photos',
+              tokenAliases: {},
+            },
+            posts: {
+              desc: '',
+              text: 'Click here {num} times to eat posts',
+              tokenAliases: {},
+            },
           },
         },
       },
-      m: [
-        {token: 'num', type: FbtVariationType.NUMBER, singular: true},
-        {range: ['see', 'eat']},
-        {range: ['photos', 'posts']},
-      ],
     },
     output: {
       shiftedJsfbt: {
         see: {
           photos: {
-            _1: 'Click here 1 time to see photos',
-            '*': 'Click here {num} times to see photos',
+            _1: {
+              desc: '',
+              text: 'Click here 1 time to see photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click here {num} times to see photos',
+              tokenAliases: {},
+            },
           },
           posts: {
-            _1: 'Click here 1 time to see posts',
-            '*': 'Click here {num} times to see posts',
+            _1: {
+              desc: '',
+              text: 'Click here 1 time to see posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click here {num} times to see posts',
+              tokenAliases: {},
+            },
           },
         },
         eat: {
           photos: {
-            _1: 'Click here 1 time to eat photos',
-            '*': 'Click here {num} times to eat photos',
+            _1: {
+              desc: '',
+              text: 'Click here 1 time to eat photos',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click here {num} times to eat photos',
+              tokenAliases: {},
+            },
           },
           posts: {
-            _1: 'Click here 1 time to eat posts',
-            '*': 'Click here {num} times to eat posts',
+            _1: {
+              desc: '',
+              text: 'Click here 1 time to eat posts',
+              tokenAliases: {},
+            },
+            '*': {
+              desc: '',
+              text: 'Click here {num} times to eat posts',
+              tokenAliases: {},
+            },
           },
         },
       },

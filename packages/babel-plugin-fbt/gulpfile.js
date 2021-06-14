@@ -6,18 +6,20 @@
  *
  * @format
  * @noflow
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  */
 
 'use strict';
 
+const setGeneratedFilePragmas = require('../../setGeneratedFilePragmas');
 const del = require('del');
 const gulp = require('gulp');
 const babel = require('gulp-babel');
 const gulpOnce = require('gulp-once');
 const rename = require('gulp-rename');
-const stripDocblockPragmas = require('gulp-strip-docblock-pragmas');
 const path = require('path');
+
+const ONCALL_ID = 'oncall+i18n_fbt_js';
 
 const paths = {
   src: {
@@ -42,25 +44,23 @@ const dest = (glob, opts) =>
     ...opts,
   });
 
-// Strip the 'generated' pragma.
-// Files are transpiled and contents no longer match signature
-const stripGenerated = () => stripDocblockPragmas({pragmas: ['generated']});
 const babelPluginFbt_buildDistJS = () =>
   src(paths.src.js, {
     follow: true,
   })
     .pipe(once())
-    .pipe(stripGenerated())
+    .pipe(setGeneratedFilePragmas(ONCALL_ID))
     .pipe(
       babel({
         plugins: [
-          '@babel/plugin-proposal-optional-catch-binding',
-          '@babel/plugin-syntax-class-properties',
-          '@babel/plugin-syntax-flow',
-          'babel-preset-fbjs/plugins/dev-expression',
-          '@babel/plugin-proposal-nullish-coalescing-operator',
-          '@babel/plugin-proposal-optional-chaining',
-          '@babel/plugin-transform-flow-strip-types',
+          require('@babel/plugin-proposal-optional-catch-binding'),
+          require('@babel/plugin-proposal-class-properties'),
+          [require('@babel/plugin-syntax-flow'), {enums: true}],
+          require('babel-plugin-transform-flow-enums'),
+          require('babel-preset-fbjs/plugins/dev-expression'),
+          require('@babel/plugin-proposal-nullish-coalescing-operator'),
+          require('@babel/plugin-proposal-optional-chaining'),
+          require('@babel/plugin-transform-flow-strip-types'),
         ],
       }),
     )
@@ -72,7 +72,7 @@ const babelPluginFbt_buildDistFlowJS = () =>
   })
     .pipe(rename({extname: '.js.flow'}))
     .pipe(once())
-    .pipe(stripGenerated())
+    .pipe(setGeneratedFilePragmas(ONCALL_ID))
     .pipe(dest(paths.dist));
 
 const babelPluginFbt_copyJsonToDist = () =>

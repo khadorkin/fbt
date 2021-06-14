@@ -2,45 +2,39 @@
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
  * @format
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @typechecks
  * @flow
  */
 
-/* eslint-disable fb-www/dot-notation, fb-www/fbt-no-project */
+/* eslint-disable fb-www/fbt-no-project */
 
 'use strict';
 
-import typeof intlNumUtilsType from 'intlNumUtils';
+import type {IntlVariationsEnum} from 'IntlVariations';
 
 jest.mock('FbtNumberType');
+jest.mock('translationOverrideListener'); // FB internal
 
 import type {FbtRuntimeCallInput, FbtTranslatedInput} from 'FbtHooks';
 
+const GenderConst = require('GenderConst');
 // Warning: importing JS modules outside of beforeEach blocks is generally bad practice
 // in jest tests. We might need to move these modules inside beforeEach().
 // These ones can stay here for now since they have a consistent behavior across this test suite.
-const FbtNumberType = require('FbtNumberType');
 const IntlVariations = require('IntlVariations');
-const React = require('React');
 const ReactDOM = require('ReactDOM');
 
 const invariant = require('invariant');
-
-const ONE = String(IntlVariations.NUMBER_ONE);
-const FEW = String(IntlVariations.NUMBER_FEW);
-const MALE = String(IntlVariations.GENDER_MALE);
-const FEMALE = String(IntlVariations.GENDER_FEMALE);
+const React = require('react');
 
 let domContainer;
 let fbt;
 let fbtRuntime;
-let intlNumUtils;
 
 describe('fbt', () => {
   beforeEach(() => {
     jest.resetModules();
-    intlNumUtils = jest.requireActual<intlNumUtilsType>('intlNumUtils');
     fbtRuntime = jest.requireActual('fbt');
     fbt = require('fbt');
     domContainer = document.createElement('div');
@@ -185,6 +179,7 @@ describe('fbt', () => {
     // flow thinks ReactDOM.findDOMNode can return a type of Text...
     invariant(node instanceof Element, 'Expected node to be an Element');
     const resultingElements = node.getElementsByTagName('div');
+    // $FlowFixMe[method-unbinding] added when improving typing for this parameters
     return Array.prototype.slice.call(resultingElements, 0);
   }
 
@@ -339,5 +334,89 @@ describe('fbt', () => {
         ),
       ).toEqual(fbtParams);
     });
+  });
+
+  describe(': given a string with implicit parameters', () => {
+    function getFbt({viewer, ownerGender, object, count}) {
+      return (
+        <fbt desc="description">
+          <fbt:name gender={viewer.gender} name="name">
+            {viewer.name}
+          </fbt:name>
+          clicked on
+          <strong>
+            <fbt:pronoun gender={GenderConst[ownerGender]} type="possessive" />
+            <a href="#link">
+              <fbt:enum
+                enum-range={{
+                  photo: 'photo',
+                  comment: 'comment',
+                }}
+                value={object}
+              />
+            </a>
+          </strong>{' '}
+          <em>
+            <fbt:plural count={count} showCount="yes">
+              time
+            </fbt:plural>
+          </em>
+        </fbt>
+      );
+    }
+
+    // DEBUG: show the babel-plugin-fbt transform output
+    // console.warn('getFbt = \n----\n%s\n----\n', getFbt + '');
+
+    const combinations = {
+      viewers: ([
+        {
+          gender: IntlVariations.GENDER_MALE,
+          name: 'Bob',
+        },
+        {
+          gender: IntlVariations.GENDER_FEMALE,
+          name: 'Betty',
+        },
+        {
+          gender: IntlVariations.GENDER_UNKNOWN,
+          name: 'Kim',
+        },
+      ]: Array<{
+        gender: IntlVariationsEnum,
+        name: string,
+      }>),
+      ownerGenders: ([
+        'FEMALE_SINGULAR',
+        'MALE_SINGULAR',
+        'UNKNOWN_PLURAL',
+      ]: Array<$Keys<typeof GenderConst>>),
+      objects: ['photo', 'comment'],
+      counts: [1, 10],
+    };
+
+    combinations.viewers.forEach(viewer =>
+      combinations.ownerGenders.forEach(ownerGender =>
+        combinations.objects.forEach(object =>
+          combinations.counts.forEach(count =>
+            describe(`where
+              viewer=${viewer.name},
+              ownerGender=${ownerGender},
+              object=${object},
+              count=${count}\n`, () =>
+              it(`should produce proper nested fbt results`, () => {
+                expect(
+                  getFbt({
+                    viewer,
+                    ownerGender,
+                    object,
+                    count,
+                  }),
+                ).toMatchSnapshot();
+              })),
+          ),
+        ),
+      ),
+    );
   });
 });

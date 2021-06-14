@@ -1,24 +1,25 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @format
+ * @emails oncall+i18n_fbt_js
  * @flow
  */
 
-/*::
-import type {PatternHash, PatternString} from '../../../../runtime/shared/FbtTable';
-import type {PackagerPhrase} from './FbtCollector';
+/*eslint max-len: ["error", 100]*/
 
-// The hash function signature should look like:
-// [{desc: '...', texts: ['t1',...,'tN']},...]) =>
-//   [[hash1,...,hashN],...]
-export type HashFunction = (textsGroupedByDesc: Array<{
-  desc: string,
-  texts: Array<PatternString>
-}>) => Array<Array<PatternHash>>;
-*/
+import type {
+  PatternHash,
+  PatternString,
+} from '../../../../runtime/shared/FbtTable';
+import type {HashToLeaf, PackagerPhrase} from './FbtCollector';
 
-const {FbtType} = require('../FbtConstants');
+export type HashFunction = (
+  text: PatternString,
+  description: string,
+) => PatternHash;
+
+const {onEachLeaf} = require('../JSFbtUtil');
 
 /**
  * TextPackager massages the data to handle multiple texts in fbt payloads (like
@@ -26,31 +27,24 @@ const {FbtType} = require('../FbtConstants');
  * stripped down phrase
  */
 class TextPackager {
-  /*:: _hash: HashFunction; */
-  constructor(hash /*: HashFunction */) {
+  _hash: HashFunction;
+  constructor(hash: HashFunction) {
     this._hash = hash;
   }
 
-  pack(phrases /*: Array<PackagerPhrase> */) /*: Array<PackagerPhrase> */ {
-    const flatTexts = phrases.map(phrase => ({
-      desc: phrase.desc,
-      texts: _flattenTexts(
-        phrase.type === FbtType.TEXT ? phrase.jsfbt : phrase.jsfbt.t,
-      ),
-    }));
-    const hashes = this._hash(flatTexts);
-    return flatTexts.map((flatText, phraseIdx) => {
-      const hashToText = {};
-      flatText.texts.forEach((text, textIdx) => {
-        const hash = hashes[phraseIdx][textIdx];
-        if (hash == null) {
-          throw new Error('Missing hash for text: ' + text);
-        }
-        hashToText[hash] = text;
+  pack(phrases: Array<PackagerPhrase>): Array<PackagerPhrase> {
+    return phrases.map(phrase => {
+      const hashToLeaf: HashToLeaf = {};
+      onEachLeaf(phrase, ({text, desc}) => {
+        hashToLeaf[this._hash(text, desc)] = {
+          text,
+          desc,
+        };
       });
+
       return {
-        hashToText,
-        ...phrases[phraseIdx],
+        hashToLeaf,
+        ...(phrase: PackagerPhrase),
       };
     });
   }
@@ -61,9 +55,6 @@ function _flattenTexts(texts) {
     // Return all tree leaves of a jsfbt TABLE or singleton array in the case of
     // a TEXT type
     return [texts];
-  }
-  if (texts instanceof Array) {
-    return [texts[0]];
   }
 
   const aggregate = [];

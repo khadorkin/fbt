@@ -7,41 +7,39 @@
  * but fbt() already uses 'type' as the tag within the fbt table data for the
  * to-be-localized text.
  *
- * @emails oncall+internationalization
- * @flow strict
+ * @format
+ * @emails oncall+i18n_fbt_js
+ * @flow strict-local
  */
+
 /*eslint max-len: ["error", 100]*/
 
-/*::
+import type {ValidPronounUsagesType} from '../../../runtime/shared/FbtRuntimeTypes';
+
 export type FbtOptionValue = string | boolean | BabelNode;
+export type FbtOptionValues<K> = {|[K]: ?FbtOptionValue|};
+export type FbtOptionConfig<K> = {|[K]: {[optionValue: string]: true} | true|};
 // export type FbtCallSiteOptions = {[$Keys<typeof ValidFbtOptions>]: ?FbtOptionValue};
 export type FbtCallSiteOptions = $Shape<{|
-   author?: ?FbtOptionValue;
-   // TODO(T56277500) Refine to expected type: string
-   common?: ?FbtOptionValue;
-   // TODO(T56277500) Refine to expected type: boolean
-   doNotExtract?: ?FbtOptionValue;
-   // TODO(T56277500) Refine to expected type: boolean
-   preserveWhitespace?: ?FbtOptionValue;
-   project: string;
-   // TODO(T56277500) Refine to expected type: BabelNode
-   subject?: ?FbtOptionValue;
+  author?: ?FbtOptionValue,
+  // TODO(T56277500) Refine to expected type: string
+  common?: ?FbtOptionValue,
+  doNotExtract?: ?boolean,
+  // TODO(T56277500) Refine to expected type: boolean
+  preserveWhitespace?: ?FbtOptionValue,
+  project: string,
+  // TODO(T56277500) Refine to expected type: BabelNode
+  subject?: ?FbtOptionValue,
 |}>;
 
 // JS module names without the "React FBT" variant
 export type JSModuleNameType = 'fbt' | 'fbs';
-export type ValidPronounUsagesKey = $Keys<typeof ValidPronounUsages>;
-export type ShowCountKey = $Keys<typeof ShowCount>;
-*/
+export type ValidPronounUsagesKey = $Keys<ValidPronounUsagesType>;
+export type FbtTypeValue = $Values<typeof FbtType>;
+
+const keyMirror = require('fbjs/lib/keyMirror');
 
 const SENTINEL = '__FBT__';
-
-const ValidPronounUsages = {
-  object: 0,
-  possessive: 1,
-  reflexive: 2,
-  subject: 3,
-};
 
 const PluralRequiredAttributes = {
   count: true,
@@ -52,6 +50,10 @@ const ShowCount = {
   no: true,
   ifMany: true,
 };
+
+const ShowCountKeys: $ObjMapi<typeof ShowCount, <K>(K) => K> = keyMirror(
+  ShowCount,
+);
 
 const PluralOptions = {
   value: true, // optional value to replace token (rather than count)
@@ -65,21 +67,38 @@ const ValidPluralOptions = {
   ...PluralRequiredAttributes,
 };
 
+const ValidPronounUsages: ValidPronounUsagesType = {
+  object: 0,
+  possessive: 1,
+  reflexive: 2,
+  subject: 3,
+};
+
+const ValidPronounUsagesKeys: $ObjMapi<
+  typeof ValidPronounUsages,
+  <K>(K) => K,
+> = keyMirror(ValidPronounUsages);
+
 const ValidPronounOptions = {
   human: {true: true, false: true},
   capitalize: {true: true, false: true},
+};
+
+const PronounRequiredAttributes = {
+  type: true, // See ValidPronounUsages for valid strings
+  gender: true,
 };
 
 /**
  * Valid options allowed in the fbt(...) calls.
  */
 const ValidFbtOptions = {
-  project: true,
   author: true,
-  preserveWhitespace: true,
-  subject: true,
   common: true,
   doNotExtract: true,
+  preserveWhitespace: true,
+  project: true,
+  subject: true,
 };
 
 const FbtBooleanOptions = {
@@ -91,11 +110,6 @@ const FbtCallMustHaveAtLeastOneOfTheseAttributes = ['desc', 'common'];
 
 const FbtRequiredAttributes = {
   desc: true,
-};
-
-const PronounRequiredAttributes = {
-  type: true,
-  gender: true,
 };
 
 const PLURAL_PARAM_TOKEN = 'number';
@@ -122,7 +136,7 @@ const JSModuleName = {
 };
 
 // Used to help detect the usage of the JS fbt/fbs API inside a JS file
-const ModuleNameRegExp /*: RegExp */ = new RegExp(
+const ModuleNameRegExp: RegExp = new RegExp(
   `\\b(?:${Object.values(JSModuleName).join('|')})\\b`,
 );
 
@@ -142,9 +156,11 @@ module.exports = {
   PronounRequiredAttributes,
   RequiredParamOptions,
   SENTINEL,
+  ShowCountKeys,
   ValidFbtOptions,
   ValidParamOptions,
   ValidPluralOptions,
   ValidPronounOptions,
   ValidPronounUsages,
+  ValidPronounUsagesKeys,
 };

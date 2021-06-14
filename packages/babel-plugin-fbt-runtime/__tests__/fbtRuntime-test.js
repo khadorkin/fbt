@@ -3,7 +3,7 @@
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
  * @nolint
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  */
 
@@ -33,7 +33,8 @@ function runTest(data, isRN) {
   );
 }
 
-describe('Test hash key generation', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('Test hash key generation', () => {
   it('should generate hash key for simply string', () => {
     const data = {
       input: withFbtRequireStatement(`
@@ -83,7 +84,8 @@ lines">
   });
 });
 
-describe('Test enum hash keys generation', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+xdescribe('Test enum hash keys generation', () => {
   it('should generate single hash key for fbt with enum under regular mode', () => {
     runTest(
       {

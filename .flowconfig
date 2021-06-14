@@ -1,6 +1,7 @@
 [ignore]
 <PROJECT_ROOT>/packages/fbt/lib/.*
 <PROJECT_ROOT>/packages/fbt/dist/.*
+<PROJECT_ROOT>/packages/react-native-fbt/.*
 .*/@babel/types/lib/index.js.flow
 .*/packages/babel-plugin-fbt/dist/.*
 
@@ -19,14 +20,14 @@ name=flow/fbt-top-level-repo
 module.system=node
 module.system.node.resolve_dirname=node_modules
 
-esproposal.class_instance_fields=enable
-esproposal.class_static_fields=enable
-esproposal.optional_chaining=enable
-esproposal.nullish_coalescing=enable
 # TODO(T60942430) Set object definitions to be exact by default
 # exact_by_default=true
 facebook.fbs=Fbs
 facebook.fbt=FbtElement
+
+# Map imported internal plugins
+module.name_mapper='^babel-plugin-fbt$' -> '<PROJECT_ROOT>/packages/babel-plugin-fbt/src'
+module.name_mapper='^\(babel-plugin-fbt\)/dist/\(.*\)$' -> '<PROJECT_ROOT>/packages/\1/src/\2'
 
 # Import 3rd party node modules used by Babel transforms and runtime tests
 module.name_mapper='^\(\(invariant\|graceful-fs\|nullthrows\|optimist\|fb-babel-plugin-utils\|@babel\|fbjs\|jest-docblock\)\(/.*\)?\)$' -> '<PROJECT_ROOT>/node_modules/\1'
@@ -38,7 +39,7 @@ module.name_mapper='^\(cx\|FBLogger\|FBLogMessage\|FbtQTOverrides\|FbtResultGK\|
 module.name_mapper='^\(DisplayGenderConst\)$' -> '<PROJECT_ROOT>/runtime/shared_deps/\1'
 
 # Redirect public JS modules to a dedicated folder
-module.name_mapper='^\(escapeRegex\|fbs\|fbt\|FbtHooks\|FbtHooksImpl\|FbtPureStringResult\|FbtReactUtil\|FbtResultBase\|FbtResult\|FbtTable\|FbtTableAccessor\|formatNumber\|getFbsResult\|IntlGender\|intlList\|intlNumUtils\|IntlPunctuation\|IntlVariationResolverImpl\|substituteTokens\)$' -> '<PROJECT_ROOT>/runtime/shared/\1'
+module.name_mapper='^\(escapeRegex\|fbs\|fbt\|FbtHooks\|FbtHooksImpl\|FbtPureStringResult\|FbtReactUtil\|FbtResultBase\|FbtResult\|FbtRuntimeTypes\|FbtTable\|FbtTableAccessor\|formatNumber\|getFbsResult\|IntlGender\|intlList\|intlNumUtils\|IntlPunctuation\|IntlVariationResolverImpl\|substituteTokens\)$' -> '<PROJECT_ROOT>/runtime/shared/\1'
 module.name_mapper='^\(IntlCLDRNumberType[0-9][0-9]\)$' -> '<PROJECT_ROOT>/runtime/nonfb/FbtNumber/\1'
 # This Jest mock file is only used for testing, we don't need it on the OSS side
 module.name_mapper='^\(FbtNumberType\)$' -> '<PROJECT_ROOT>/runtime/shared/__mocks__/\1'
@@ -58,6 +59,7 @@ suppress_type=$FlowFixMeEmpty
 suppress_type=$FlowExpectedError
 
 experimental.abstract_locations=true
+experimental.enums=true
 
 [strict]
 deprecated-type
@@ -69,4 +71,4 @@ untyped-import
 untyped-type-import
 
 [version]
-^0.143.1
+^0.152.0

@@ -1,35 +1,33 @@
 /**
  * Copyright 2004-present Facebook. All Rights Reserved.
  *
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  * @format
  */
 
 jest.autoMockOff();
 
-const {payload, transform, withFbtRequireStatement} = require('../FbtTestUtil');
-const {TestUtil} = require('fb-babel-plugin-utils');
+const {
+  jsCodeFbtCallSerializer,
+  snapshotTransform,
+  withFbtRequireStatement,
+} = require('../FbtTestUtil');
+
+expect.addSnapshotSerializer(jsCodeFbtCallSerializer);
 
 function runTest(data, extra) {
-  TestUtil.assertSourceAstEqual(transform(data.input, extra), data.output);
+  expect(snapshotTransform(data.input, extra)).toMatchSnapshot();
 }
 
-describe('fbt() API: ', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+// eslint-disable-next-line jest/no-disabled-tests
+xdescribe('fbt() API: ', () => {
   describe('using extraOptions', () => {
     it('should accept "locale" extra option', () => {
       runTest(
         {
           input: withFbtRequireStatement(
             `fbt("Foo", "Bar", {locale: locale.data});`,
-          ),
-          output: withFbtRequireStatement(
-            `fbt._(
-              ${payload({
-                type: 'text',
-                jsfbt: 'Foo',
-                desc: 'Bar',
-              })}
-            )`,
           ),
         },
         {
@@ -43,22 +41,6 @@ describe('fbt() API: ', () => {
     it('should accept "subject" as a parameter', () => {
       runTest({
         input: withFbtRequireStatement(`fbt("Foo", "Bar", {subject: foo});`),
-        output: withFbtRequireStatement(
-          `fbt._(
-            ${payload({
-              type: 'table',
-              jsfbt: {
-                t: {'*': 'Foo'},
-                m: [{token: '__subject__', type: 1}],
-              },
-              desc: 'Bar',
-              project: '',
-            })},
-            [
-              fbt._subject(foo)
-            ]
-          )`,
-        ),
       });
     });
   });
@@ -67,28 +49,14 @@ describe('fbt() API: ', () => {
     it('should accept "subject" as a parameter', () => {
       runTest({
         input: withFbtRequireStatement('fbt(`Foo`, "Bar", {subject: foo});'),
-        output: withFbtRequireStatement(
-          `fbt._(
-            ${payload({
-              type: 'table',
-              jsfbt: {
-                t: {'*': 'Foo'},
-                m: [{token: '__subject__', type: 1}],
-              },
-              desc: 'Bar',
-              project: '',
-            })},
-            [
-              fbt._subject(foo)
-            ]
-          )`,
-        ),
       });
     });
   });
 });
 
-describe('Test double-lined params', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+// eslint-disable-next-line jest/no-disabled-tests
+xdescribe('Test double-lined params', () => {
   it('should remove the new line for param names that are two lines', () => {
     runTest({
       input: withFbtRequireStatement(
@@ -103,48 +71,17 @@ describe('Test double-lined params', () => {
           test
         </fbt>`,
       ),
-      output: withFbtRequireStatement(
-        `fbt._(
-          ${payload({
-            type: 'text',
-            jsfbt: '{two lines} test',
-            desc: 'd',
-          })},
-          [
-            fbt._param(
-              "two lines",
-              React.createElement(
-                "b",
-                null,
-                fbt._(
-                  ${payload({
-                    type: 'text',
-                    jsfbt: 'simple',
-                    desc: 'test',
-                  })}
-                )
-              )
-            )
-          ]
-        );`,
-      ),
     });
   });
 });
 
-describe('fbt variable binding detection', () => {
+// TODO(T40113359) Re-enable once this test scenario is ready to be tested
+// eslint-disable-next-line jest/no-disabled-tests
+xdescribe('fbt variable binding detection', () => {
   function describeFbtBindingTestCase(requireStatement) {
     return {
       input: `${requireStatement};
         fbt("Foo", "Bar");`,
-      output: `${requireStatement};
-        fbt._(
-          ${payload({
-            type: 'text',
-            jsfbt: 'Foo',
-            desc: 'Bar',
-          })}
-        )`,
     };
   }
 

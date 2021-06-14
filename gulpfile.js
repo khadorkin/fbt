@@ -6,7 +6,7 @@
  *
  * @format
  * @noflow
- * @emails oncall+internationalization
+ * @emails oncall+i18n_fbt_js
  */
 
 'use strict';
@@ -15,6 +15,7 @@ const {PLUGINS} = require('./babelPlugins');
 const moduleMap = require('./moduleMap');
 const babelPluginFbtGulp = require('./packages/babel-plugin-fbt/gulpfile');
 const {version} = require('./packages/fbt/package.json');
+const setGeneratedFilePragmas = require('./setGeneratedFilePragmas');
 const del = require('del');
 const gulp = require('gulp');
 const babel = require('gulp-babel');
@@ -26,7 +27,7 @@ const header = require('gulp-header');
 const gulpif = require('gulp-if');
 const once = require('gulp-once');
 const rename = require('gulp-rename');
-const rewriteModules = require('gulp-rewrite-flowtyped-modules');
+const rewriteFlowtypedModules = require('gulp-rewrite-flowtyped-modules');
 const gulpUtil = require('gulp-util');
 const webpackStream = require('webpack-stream');
 
@@ -36,7 +37,10 @@ const paths = {
   lib: 'packages/fbt/lib',
   license: 'LICENSE',
   runtime: [
-    'runtime/**/*.js',
+    // Individually listing subfolders of `runtime` to allow watching through these symlinks
+    'runtime/nonfb/**/*.js',
+    'runtime/shared/**/*.js',
+    'runtime/shared_deps/**/*.js',
     '!runtime/**/__tests__/*',
     '!runtime/**/__mocks__/*',
   ],
@@ -47,6 +51,7 @@ const paths = {
 };
 
 const COPYRIGHT = 'Copyright (c) Facebook, Inc. and its affiliates.';
+const ONCALL_ID = 'oncall+i18n_fbt_js';
 
 const COPYRIGHT_HEADER = `/**
  * fbt v<%= version %>
@@ -55,6 +60,11 @@ const COPYRIGHT_HEADER = `/**
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ *
+ * @${'generated'}
+ * @${'nolint'}
+ * @${'nogrep'}
+ * @emails ${ONCALL_ID}
  */
 `;
 
@@ -97,7 +107,10 @@ const copyLicense = () =>
 gulp.task('license', gulp.series(copyLicense));
 
 function flatLib(job) {
-  return job.pipe(flatten()).pipe(gulp.dest(paths.lib));
+  return job
+    .pipe(flatten())
+    .pipe(setGeneratedFilePragmas(ONCALL_ID))
+    .pipe(gulp.dest(paths.lib));
 }
 
 const buildModules = () =>
@@ -142,6 +155,7 @@ const transformTests = (src, dest) =>
     .pipe(once())
     .pipe(babel(babelTestPresets))
     .pipe(flatten())
+    .pipe(setGeneratedFilePragmas())
     .pipe(gulp.dest(dest));
 
 const buildRuntimeTests = () =>
@@ -159,22 +173,24 @@ gulp.task(
 );
 
 // Copy raw source with rewritten modules to *.js.flow
-const flowCheck = () =>
+const buildRuntimeFlowJS = () =>
   flatLib(
     gulp
       .src(paths.runtime, {follow: true})
       .pipe(rename({extname: '.js.flow'}))
-      .pipe(rewriteModules({map: moduleMap})),
+      .pipe(once())
+      .pipe(rewriteFlowtypedModules({map: moduleMap})),
   );
 
 const copyFlowTypedModules = () =>
   flatLib(gulp.src(paths.typedModules, {follow: true}));
 
-gulp.task('flow', gulp.parallel(flowCheck, copyFlowTypedModules));
+gulp.task('flow', gulp.parallel(buildRuntimeFlowJS, copyFlowTypedModules));
 
 const buildCSS = () =>
   gulp
     .src(paths.css, {follow: true})
+    .pipe(once())
     .pipe(concat('fbt.css'))
     .pipe(cleanCSS({advanced: false}))
     .pipe(header(COPYRIGHT_HEADER, {version}))
@@ -218,3 +234,22 @@ gulp.task(
     gulp.series('dist', 'dist:min'),
   ),
 );
+
+gulp.task('watch-runtime', () => {
+  gulp.watch(
+    [paths.license].concat(
+      paths.runtime,
+      paths.runtimeTests,
+      paths.runtimeMocks,
+      paths.typedModules,
+      paths.css,
+    ),
+    {
+      cwd: __dirname,
+      ignoreInitial: false,
+    },
+    function watchRuntimeFbt(done) {
+      gulp.task('build-runtime')(done);
+    },
+  );
+});
